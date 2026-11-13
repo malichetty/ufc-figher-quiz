@@ -87,7 +87,12 @@ test('why-you-match never backs an answer with a zero or near-zero stat (seen: "
     for (const a of allAnswers) {
       const r = findMatch(roster, a, division);
       for (const reason of whyYouMatch(r.fighter, a)) {
-        assert.doesNotMatch(reason.evidence, /^0 of|averages 0(\.[0-4]\d*)? /, `${r.fighter.name}: ${reason.answer} ${reason.evidence}`);
+        const what = `${r.fighter.name}: ${reason.answer} ${reason.evidence}`;
+        assert.doesNotMatch(reason.evidence, /^0 of|averages 0(\.[0-4]\d*)? /, what);
+        // Seen in round 7: weak takedown numbers, and takedowns cited for a submission answer.
+        const td = /averages ([\d.]+) takedowns/.exec(reason.evidence);
+        if (td) assert.ok(Number(td[1]) >= 1, what);
+        if (/Jiu-jitsu|slick choke/.test(reason.answer)) assert.doesNotMatch(reason.evidence, /takedowns/, what);
       }
     }
   }
