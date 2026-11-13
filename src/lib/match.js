@@ -116,11 +116,16 @@ function evidenceFor(value, fighter) {
   if (!v || v * fighter.axes[k] < 0.1) return null; // the fighter must clearly lean the same way
   if (k === 'R' && v > 0) return { kind: 'R+', text: `${who} lands ${n2(fighter.slpm)} significant strikes a minute at ${pctText(fighter.strAcc)} accuracy.` };
   if (k === 'R') {
-    // A submission-minded answer only cites submissions when the fighter
-    // really hunts them; otherwise the takedown numbers carry the grappling.
-    return (value.W || 0) < 0 && fighter.subAvg >= 0.5
-      ? { kind: 'R-sub', text: `${who} averages ${n2(fighter.subAvg)} submission attempts per 15 minutes.` }
-      : { kind: 'R-td', text: `${who} averages ${n2(fighter.tdAvg)} takedowns per 15 minutes.` };
+    // A submission answer cites submissions or nothing; a wrestling answer
+    // cites takedowns only when the fighter really shoots for them.
+    if ((value.W || 0) < 0) {
+      return fighter.subAvg >= 0.5
+        ? { kind: 'R-sub', text: `${who} averages ${n2(fighter.subAvg)} submission attempts per 15 minutes.` }
+        : null;
+    }
+    return fighter.tdAvg >= 1
+      ? { kind: 'R-td', text: `${who} averages ${n2(fighter.tdAvg)} takedowns per 15 minutes.` }
+      : null;
   }
   if (k === 'T' && v > 0) return { kind: 'T+', text: `${who} keeps a pace of ${n2(fighter.slpm + fighter.sapm)} strikes exchanged a minute.` };
   if (k === 'T') return { kind: 'T-', text: `${who} defends ${pctText(fighter.strDef)} of strikes thrown at them.` };

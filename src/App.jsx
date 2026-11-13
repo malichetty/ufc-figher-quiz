@@ -351,14 +351,13 @@ function Reveal() {
   );
 }
 
-function lean(label, v, axis) {
-  const plural = label === 'You' || label === 'Them';
-  const who = label === 'Them' ? 'They' : label;
+// `who` is either a name (third person) or the pronoun the caller chose.
+function lean(who, plural, v, axis) {
   if (Math.abs(v) < 0.25) return `${who} ${plural ? 'are' : 'is'} near the middle`;
   return `${who} ${plural ? 'lean' : 'leans'} ${(v > 0 ? axis.plus : axis.minus).toLowerCase()}`;
 }
 
-function AxisBars({ you, them, themLabel, youLabel = 'You' }) {
+function AxisBars({ you, them, themLabel, youLabel = 'You', youPronoun = youLabel === 'You' ? 'You' : null }) {
   return (
     <div className="axes">
       {AXES.map((a) => (
@@ -368,7 +367,13 @@ function AxisBars({ you, them, themLabel, youLabel = 'You' }) {
             <span>{a.plus}</span>
           </div>
           <p className="sr-only">
-            {[you && lean(youLabel, you[a.key], a), them && lean(themLabel, them[a.key], a)].filter(Boolean).join('; ')}.
+            {[
+              you && lean(youPronoun || youLabel, Boolean(youPronoun), you[a.key], a),
+              them && lean(themLabel, false, them[a.key], a),
+            ]
+              .filter(Boolean)
+              .join('; ')}
+            .
           </p>
           <div className="axis-track" aria-hidden="true">
             {them && (
@@ -532,6 +537,7 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
           <AxisBars
             you={axes}
             youLabel={own ? 'You' : name || 'Them'}
+            youPronoun={own ? 'You' : name ? null : 'They'}
             them={fighter.axes}
             themLabel={surname}
           />
