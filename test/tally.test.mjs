@@ -57,6 +57,21 @@ test('refuses a failed bot check, a missing token and unknown results without wr
   assert.deepEqual([...db.rows], [['total', 62]]);
 });
 
+test('refuses a body over 8 KB even without a Content-Length header', async () => {
+  const db = fakeDb({ total: 62 });
+  const big = new ReadableStream({
+    start(c) {
+      for (let i = 0; i < 4; i++) c.enqueue(new TextEncoder().encode('x'.repeat(4096)));
+      c.close();
+    },
+  });
+  const request = new Request('https://x/api/tally', { method: 'POST', body: big, duplex: 'half' });
+  assert.equal(request.headers.get('Content-Length'), null);
+  const res = await handlePost({ env: env(db), request, isKnown, fetchImpl: verifier(true), today });
+  assert.equal(res.status, 413);
+  assert.deepEqual([...db.rows], [['total', 62]]);
+});
+
 test('stops counting, and stops writing, past the daily cap', async () => {
   const db = fakeDb({ total: 62, [`day:${today}`]: DAILY_CAP });
   for (let i = 0; i < 3; i++) {

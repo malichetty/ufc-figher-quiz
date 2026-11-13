@@ -93,6 +93,7 @@ export default function App() {
 
   useEffect(() => {
     const onPop = () => {
+      fresh.current = null;
       const s = initialState();
       setStage(s.stage);
       setResult(s.result || null);
@@ -175,6 +176,7 @@ export default function App() {
   };
 
   const takeChallenge = () => {
+    fresh.current = null;
     if (result && !own) setChallenger(result);
     window.history.pushState({}, '', '/');
     setResult(null);
@@ -429,7 +431,7 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
                 gotten {lastName(fighter.name)}.
               </>
             )}{' '}
-            {tally.typed > 0 && <>{Math.round((tally.type / tally.typed) * 100)}% of quiz takers are {typePlural(type)}.</>}
+            {tally.typed > 0 && <>{Math.min(100, Math.round((tally.type / tally.typed) * 100))}% of quiz takers are {typePlural(type)}.</>}
           </p>
         )}
 

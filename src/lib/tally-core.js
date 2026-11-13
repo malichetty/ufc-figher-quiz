@@ -4,7 +4,8 @@
 // Guardrails: a write needs a valid Turnstile token (single use, so no
 // replays), only known fighter/type keys can be written, one quiz is one D1
 // batch, and a daily cap stops counting (and the D1 bill) during an attack.
-export const DAILY_CAP = 20000;
+// Five D1 row writes per quiz: the cap keeps a day under 75,000 writes.
+export const DAILY_CAP = 15000;
 const SITEVERIFY = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
 const json = (body, status = 200, extra = {}) =>
@@ -40,6 +41,39 @@ export function canonicalGetUrl(url, isKnown) {
   return out;
 }
 
+const BODY_MAX = 8192;
+
+// Reads at most BODY_MAX bytes whatever Content-Length says (a chunked body
+// has none), so an oversized POST is refused before it is buffered.
+async function readJsonCapped(request) {
+  if (Number(request.headers.get('Content-Length') || 0) > BODY_MAX) return { tooLarge: true };
+  if (!request.body) return { value: null };
+  const reader = request.body.getReader();
+  const chunks = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > BODY_MAX) {
+      await reader.cancel();
+      return { tooLarge: true };
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const c of chunks) {
+    bytes.set(c, at);
+    at += c.byteLength;
+  }
+  try {
+    return { value: JSON.parse(new TextDecoder().decode(bytes)) };
+  } catch {
+    return { bad: true };
+  }
+}
+
 async function readCounts(db, keys) {
   const marks = keys.map((_, i) => `?${i + 1}`).join(', ');
   const { results } = await db
@@ -70,13 +104,10 @@ export async function handleGet({ env, url, isKnown }) {
 // POST /api/tally {slug, type, token}: count one finished quiz.
 export async function handlePost({ env, request, isKnown, fetchImpl = fetch, today }) {
   if (!enabled(env)) return json({ enabled: false }, 503);
-  if (Number(request.headers.get('Content-Length') || 0) > 8192) return json({ error: 'too large' }, 413);
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: 'bad json' }, 400);
-  }
+  const parsed = await readJsonCapped(request);
+  if (parsed.tooLarge) return json({ error: 'too large' }, 413);
+  if (parsed.bad) return json({ error: 'bad json' }, 400);
+  const body = parsed.value;
   const { slug, type, token } = body || {};
   if (typeof slug !== 'string' || typeof type !== 'string' || !isKnown(slug, type)) {
     return json({ error: 'unknown result' }, 400);

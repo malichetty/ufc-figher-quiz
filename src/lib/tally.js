@@ -56,13 +56,17 @@ async function getToken() {
   if (!w) return null;
   settle(null); // an earlier wait that never finished gives up its turn
   return new Promise((resolve) => {
-    const mine = (token) => {
+    // Reset after every outcome so a solved or abandoned check never stays on
+    // screen over the result.
+    const done = (token) => {
       clearTimeout(timer);
+      window.turnstile.reset(w.id);
       resolve(token);
     };
+    const mine = (token) => done(token);
     const timer = setTimeout(() => {
       if (pending === mine) pending = null;
-      resolve(null);
+      done(null);
     }, 30000);
     pending = mine;
     window.turnstile.reset(w.id);
