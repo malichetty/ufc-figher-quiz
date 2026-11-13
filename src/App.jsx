@@ -352,8 +352,10 @@ function Reveal() {
 }
 
 function lean(label, v, axis) {
-  if (Math.abs(v) < 0.25) return `${label} is near the middle`;
-  return `${label} leans ${(v > 0 ? axis.plus : axis.minus).toLowerCase()}`;
+  const plural = label === 'You' || label === 'Them';
+  const who = label === 'Them' ? 'They' : label;
+  if (Math.abs(v) < 0.25) return `${who} ${plural ? 'are' : 'is'} near the middle`;
+  return `${who} ${plural ? 'lean' : 'leans'} ${(v > 0 ? axis.plus : axis.minus).toLowerCase()}`;
 }
 
 function AxisBars({ you, them, themLabel, youLabel = 'You' }) {

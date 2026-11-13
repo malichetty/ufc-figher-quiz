@@ -116,16 +116,23 @@ function evidenceFor(value, fighter) {
   if (!v || v * fighter.axes[k] < 0.1) return null; // the fighter must clearly lean the same way
   if (k === 'R' && v > 0) return { kind: 'R+', text: `${who} lands ${n2(fighter.slpm)} significant strikes a minute at ${pctText(fighter.strAcc)} accuracy.` };
   if (k === 'R') {
-    return (value.W || 0) < 0
+    // A submission-minded answer only cites submissions when the fighter
+    // really hunts them; otherwise the takedown numbers carry the grappling.
+    return (value.W || 0) < 0 && fighter.subAvg >= 0.5
       ? { kind: 'R-sub', text: `${who} averages ${n2(fighter.subAvg)} submission attempts per 15 minutes.` }
       : { kind: 'R-td', text: `${who} averages ${n2(fighter.tdAvg)} takedowns per 15 minutes.` };
   }
   if (k === 'T' && v > 0) return { kind: 'T+', text: `${who} keeps a pace of ${n2(fighter.slpm + fighter.sapm)} strikes exchanged a minute.` };
   if (k === 'T') return { kind: 'T-', text: `${who} defends ${pctText(fighter.strDef)} of strikes thrown at them.` };
   if (v > 0) {
-    if ((value.W || 0) > 0) return { kind: 'F-ko', text: `${fighter.koWins} of ${who}'s ${fighter.ufcWins} UFC wins came by knockout.` };
-    if ((value.W || 0) < 0) return { kind: 'F-sub', text: `${fighter.subWins} of ${who}'s ${fighter.ufcWins} UFC wins came by submission.` };
-    return { kind: 'F', text: `${fighter.koWins + fighter.subWins} of ${who}'s ${fighter.ufcWins} UFC wins ended early.` };
+    // A knockout or submission answer must match how the fighter finishes.
+    if (!value.W || value.W * (fighter.axes.W || 0) < 0) return null;
+    if ((value.W || 0) > 0 && !fighter.koWins) return null;
+    if ((value.W || 0) < 0 && !fighter.subWins) return null;
+    // Every finishing answer names a method (W), so the reason cites that one.
+    return (value.W || 0) > 0
+      ? { kind: 'F-ko', text: `${fighter.koWins} of ${who}'s ${fighter.ufcWins} UFC wins came by knockout.` }
+      : { kind: 'F-sub', text: `${fighter.subWins} of ${who}'s ${fighter.ufcWins} UFC wins came by submission.` };
   }
   return { kind: 'F-', text: `${fighter.decWins} of ${who}'s ${fighter.ufcWins} UFC wins went to the judges.` };
 }

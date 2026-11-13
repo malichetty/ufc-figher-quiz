@@ -646,7 +646,6 @@ button {
 }
 .inline-cta {
   margin: 18px 0 4px;
-  display: flex;
   flex-direction: column;
   gap: 8px;
 }
@@ -706,7 +705,7 @@ button {
 }
 
 @media (max-width: 720px) {
-  .phone-only {
+  .inline-cta.phone-only {
     display: flex;
   }
   .sticky-cta.phone-only {

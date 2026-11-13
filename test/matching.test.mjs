@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { findMatch } from '../src/lib/match.js';
+import { findMatch, whyYouMatch } from '../src/lib/match.js';
 import { QUESTIONS } from '../src/lib/questions.js';
 import { TYPE_CODES } from '../src/lib/types.js';
 import { parseShareLocation, sanitizeName, sharePath } from '../src/lib/share.js';
@@ -80,6 +80,17 @@ test('US-001 champions are always in the pool (seen: Kayla Harrison, 3 UFC fight
   }));
   const built = buildRoster(rows);
   assert.ok(built.fighters.some((f) => f.name === 'New Champion' && f.champion));
+});
+
+test('why-you-match never backs an answer with a zero or near-zero stat (seen: "They tap" -> 0 submissions)', () => {
+  for (const division of ['all', 'men', 'women']) {
+    for (const a of allAnswers) {
+      const r = findMatch(roster, a, division);
+      for (const reason of whyYouMatch(r.fighter, a)) {
+        assert.doesNotMatch(reason.evidence, /^0 of|averages 0(\.[0-4]\d*)? /, `${r.fighter.name}: ${reason.answer} ${reason.evidence}`);
+      }
+    }
+  }
 });
 
 test('US-001 same answers always give the same fighter', () => {
