@@ -1,0 +1,26 @@
+# Rebuilds the site every Tuesday so the roster picks up the UFC Stats API's
+# Sunday/Monday refresh. One deploy per run; the build never triggers this.
+name: Weekly roster refresh
+
+on:
+  schedule:
+    - cron: '0 12 * * 2'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Cloudflare Pages deploy hook
+        env:
+          HOOK: ${{ secrets.CF_PAGES_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::notice::CF_PAGES_DEPLOY_HOOK is not set; skipping."
+            exit 0
+          fi
+          curl -fsS -X POST --max-time 30 "$HOOK" > /dev/null
+          echo "Deploy triggered."

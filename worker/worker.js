@@ -259,7 +259,9 @@ export default {
 
       // ============ UFC API PROXY (Protected) ============
 
-      if (path.startsWith('/api/fighters')) {
+      // Only the exact path the old app used. The upstream URL is fixed, so a
+      // caller can neither reach other admin-key endpoints nor poison the cache.
+      if (path === '/api/fighters') {
         if (request.method !== 'GET') {
           return new Response(JSON.stringify({ error: 'Method not allowed' }), {
             status: 405,
@@ -291,7 +293,7 @@ export default {
         }
 
         // Forward request to UFC API with API key
-        const apiUrl = `https://ufcapi.aristotle.me${path}${url.search}`;
+        const apiUrl = 'https://ufcapi.aristotle.me/api/fighters?limit=10000';
 
         const apiResponse = await fetch(apiUrl, {
           headers: {
