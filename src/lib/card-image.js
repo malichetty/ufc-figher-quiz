@@ -112,20 +112,27 @@ export async function drawResultCard({ fighter, name, matchPct }, type) {
   stats.forEach(([label, value], i) => {
     const x = sx + i * (sw + 30);
     ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.fillRect(x, 1060, sw, 130);
+    ctx.fillRect(x, 1035, sw, 120);
     ctx.fillStyle = GOLD;
-    ctx.fillRect(x, 1060, sw, 4);
+    ctx.fillRect(x, 1035, sw, 4);
     ctx.fillStyle = '#fff';
-    ctx.font = `64px ${BEBAS}`;
-    ctx.fillText(value, x + sw / 2, 1135);
+    ctx.font = `60px ${BEBAS}`;
+    ctx.fillText(value, x + sw / 2, 1105);
     ctx.fillStyle = '#9a9a9a';
     ctx.font = `500 22px ${OSWALD}`;
-    ctx.fillText(label, x + sw / 2, 1172);
+    ctx.fillText(label, x + sw / 2, 1140);
   });
 
+  // The invitation: what someone seeing the posted image should do next.
+  ctx.fillStyle = '#e5e5e5';
+  ctx.font = `500 34px ${OSWALD}`;
+  ctx.fillText('Which UFC fighter are you?', W / 2, 1222);
   ctx.fillStyle = GOLD;
-  ctx.font = `52px ${BEBAS}`;
-  ctx.fillText('UFC.ARISTOTLE.ME', W / 2, 1290);
+  ctx.font = `56px ${BEBAS}`;
+  ctx.fillText('UFC.ARISTOTLE.ME', W / 2, 1282);
+  ctx.fillStyle = '#9a9a9a';
+  ctx.font = `500 26px ${OSWALD}`;
+  ctx.fillText('Find yours in six questions', W / 2, 1322);
 
   return canvas;
 }

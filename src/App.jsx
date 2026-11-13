@@ -253,8 +253,8 @@ function Intro({ name, setName, division, setDivision, onStart, notice, challeng
         Which UFC fighter <span>are you?</span>
       </h1>
       <p className="lede">
-        We match your fighting style against {roster.fighters.length} UFC fighters, from today's champions to the
-        legends, using their real fight stats.
+        Are you McGregor, Khabib or someone nobody saw coming? Six questions match your style against{' '}
+        {roster.fighters.length} UFC fighters, from today's champions to the legends, using their real fight stats.
       </p>
       <form
         className="start-form"
@@ -308,6 +308,11 @@ function Intro({ name, setName, division, setDivision, onStart, notice, challeng
 
 function Quiz({ index, name, onAnswer, onBack }) {
   const q = QUESTIONS[index];
+  const heading = useRef(null);
+  // Keyboard and screen-reader users land on each new question.
+  useEffect(() => {
+    heading.current?.focus();
+  }, [index]);
   return (
     <section className="quiz fade-in" key={q.id}>
       <div className="progress" aria-hidden="true">
@@ -319,7 +324,9 @@ function Quiz({ index, name, onAnswer, onBack }) {
         Question {index + 1} of {QUESTIONS.length}
         {name && index === 0 ? `. Let's go, ${name}.` : ''}
       </p>
-      <h2 className="question">{q.question}</h2>
+      <h2 className="question" ref={heading} tabIndex={-1} aria-label={`Question ${index + 1} of ${QUESTIONS.length}: ${q.question}`}>
+        {q.question}
+      </h2>
       <div className="options">
         {q.options.map((o, i) => (
           <button key={o.text} className="option" onClick={() => onAnswer(i)}>
@@ -344,6 +351,11 @@ function Reveal() {
   );
 }
 
+function lean(label, v, axis) {
+  if (Math.abs(v) < 0.25) return `${label} is near the middle`;
+  return `${label} leans ${(v > 0 ? axis.plus : axis.minus).toLowerCase()}`;
+}
+
 function AxisBars({ you, them, themLabel, youLabel = 'You' }) {
   return (
     <div className="axes">
@@ -353,7 +365,10 @@ function AxisBars({ you, them, themLabel, youLabel = 'You' }) {
             <span>{a.minus}</span>
             <span>{a.plus}</span>
           </div>
-          <div className="axis-track">
+          <p className="sr-only">
+            {[you && lean(youLabel, you[a.key], a), them && lean(themLabel, them[a.key], a)].filter(Boolean).join('; ')}.
+          </p>
+          <div className="axis-track" aria-hidden="true">
             {them && (
               <span
                 className="dot them"
@@ -365,7 +380,7 @@ function AxisBars({ you, them, themLabel, youLabel = 'You' }) {
           </div>
         </div>
       ))}
-      <div className="axis-legend">
+      <div className="axis-legend" aria-hidden="true">
         {you && (
           <span>
             <i className="dot you" /> {youLabel}
@@ -388,23 +403,40 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
     () => (own ? shareUrl({ slug: fighter.slug, name, answers, division }) : null),
     [own, fighter.slug, name, answers, division],
   );
-  const reasons = axes ? whyYouMatch(fighter, axes) : null;
+  const reasons = answers ? whyYouMatch(fighter, answers, own ? 'You' : name || 'They') : [];
   const rarity = Math.round((roster.typeShare[type] || 0) * 100);
   const status = statusOf(fighter);
   const counted = tally?.total > 0 && tally.fighter > 0;
+  const surname = lastName(fighter.name);
+  const versus = challenger && own && challenger.axes && axes;
   const heading = own
     ? name
       ? `${name}, you fight like`
       : 'You fight like'
     : `${name || 'Your friend'} fights like`;
+  const nameRef = useRef(null);
+  useEffect(() => {
+    nameRef.current?.focus();
+  }, [fighter.slug]);
+  // The sticky "Find my fighter" bar appears once the inline one scrolls away.
+  const ctaRef = useRef(null);
+  const [ctaInView, setCtaInView] = useState(true);
+  useEffect(() => {
+    if (own || !ctaRef.current || typeof IntersectionObserver !== 'function') return undefined;
+    const io = new IntersectionObserver(([e]) => setCtaInView(e.isIntersecting));
+    io.observe(ctaRef.current);
+    return () => io.disconnect();
+  }, [own]);
 
   return (
-    <section className="result fade-in">
+    <section className={`result fade-in ${own ? 'is-own' : 'is-friend'}`}>
       <article className="card">
         <div className="card-bar" />
         <p className="card-kicker">{heading}</p>
         {fighter.nickname && <p className="nickname">“{fighter.nickname}”</p>}
-        <h1 className="fighter-name">{fighter.name}</h1>
+        <h1 className="fighter-name" ref={nameRef} tabIndex={-1}>
+          {fighter.name}
+        </h1>
         <p className="fighter-meta">
           {fighter.division} · {fighter.record}
           {status && <span className={`status ${status.className}`}>{status.label}</span>}
@@ -413,58 +445,24 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
           <span className="type-badge">{t.name}</span>
           {matchPct != null && <span className="match-pct">{matchPct}% match</span>}
         </div>
-        <p className="type-desc">{t.description}</p>
-        <p className="rarity">
-          Only {rarity}% of active UFC fighters are {typePlural(type)}.
-        </p>
-        {counted && (
-          <p className="social-proof small-proof">
-            {own && tally.fighter === 1 ? (
-              <>You're the first person to get {lastName(fighter.name)}.</>
-            ) : own ? (
-              <>
-                You're one of <strong>{tally.fighter.toLocaleString()}</strong> people who got{' '}
-                {lastName(fighter.name)}.
-              </>
-            ) : (
-              <>
-                <strong>{tally.fighter.toLocaleString()}</strong> {tally.fighter === 1 ? 'person has' : 'people have'}{' '}
-                gotten {lastName(fighter.name)}.
-              </>
-            )}{' '}
-            {tally.typed > 0 && <>{Math.min(100, Math.round((tally.type / tally.typed) * 100))}% of quiz takers are {typePlural(type)}.</>}
-          </p>
-        )}
 
-        <div className="stats">
-          <Stat label="Strikes / min" value={fighter.slpm.toFixed(2)} />
-          <Stat label="Strike accuracy" value={`${Math.round(fighter.strAcc * 100)}%`} />
-          <Stat label="Takedowns / 15" value={fighter.tdAvg.toFixed(2)} />
-          <Stat label="UFC finishes" value={fighter.koWins + fighter.subWins} />
-        </div>
-
-        {reasons && (
-          <div className="why">
-            <h3>Why {lastName(fighter.name)}</h3>
-            <ul>
-              {reasons.map((r) => (
-                <li key={r}>{r}</li>
-              ))}
-            </ul>
+        {/* The next action sits right under the result on phones (desktop
+            keeps the sidebar). */}
+        {own ? (
+          <div className="inline-cta phone-only">
+            <QuickShare result={result} url={share} />
+          </div>
+        ) : (
+          <div className="inline-cta phone-only" ref={ctaRef}>
+            <p className="cta-text">Think you fight like {surname} too? Or are you a different beast?</p>
+            <button className="btn btn-primary btn-big" onClick={onChallenge}>
+              Find my fighter
+            </button>
+            <p className="small">Six questions, about a minute.</p>
           </div>
         )}
 
-        <div className="style-block">
-          <h3>{axes ? (own ? 'Your style' : `${possessive(name || 'Their')} style`) : `${possessive(lastName(fighter.name))} style`}</h3>
-          <AxisBars
-            you={axes}
-            youLabel={own ? 'You' : name || 'Them'}
-            them={fighter.axes}
-            themLabel={lastName(fighter.name)}
-          />
-        </div>
-
-        {challenger && own && challenger.axes && axes && (
+        {versus && (
           <div className="versus">
             <h3>You vs {challenger.name || 'your friend'}</h3>
             <div className="versus-row">
@@ -480,10 +478,62 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
                 <span>{TYPES[challenger.type].name}</span>
               </div>
             </div>
-            <AxisBars you={axes} them={challenger.axes} themLabel={challenger.name || 'Friend'} />
             <p className="vs-verdict">{verdict(axes, challenger.axes, challenger.name)}</p>
+            <AxisBars you={axes} them={challenger.axes} themLabel={challenger.name || 'Friend'} />
           </div>
         )}
+
+        <p className="type-desc">{own ? t.description : t.about}</p>
+        <p className="rarity">
+          Only {rarity}% of active UFC fighters are {typePlural(type)}.
+        </p>
+        {counted && (
+          <p className="social-proof small-proof">
+            {own && tally.fighter === 1 ? (
+              <>You're the first person to get {surname}.</>
+            ) : own ? (
+              <>
+                You're one of <strong>{tally.fighter.toLocaleString()}</strong> people who got {surname}.
+              </>
+            ) : (
+              <>
+                <strong>{tally.fighter.toLocaleString()}</strong> {tally.fighter === 1 ? 'person has' : 'people have'}{' '}
+                gotten {surname}.
+              </>
+            )}{' '}
+            {tally.typed > 0 && <>{Math.min(100, Math.round((tally.type / tally.typed) * 100))}% of quiz takers are {typePlural(type)}.</>}
+          </p>
+        )}
+
+        {reasons.length > 0 && (
+          <div className="why">
+            <h3>Why {surname}</h3>
+            <ul>
+              {reasons.map((r) => (
+                <li key={r.answer}>
+                  <span className="why-answer">{r.answer}</span> {r.evidence}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="stats">
+          <Stat label="Strikes / min" value={fighter.slpm.toFixed(2)} />
+          <Stat label="Strike accuracy" value={`${Math.round(fighter.strAcc * 100)}%`} />
+          <Stat label="Takedowns / 15" value={fighter.tdAvg.toFixed(2)} />
+          <Stat label="UFC finishes" value={fighter.koWins + fighter.subWins} />
+        </div>
+
+        <div className="style-block">
+          <h3>{axes ? (own ? 'Your style' : `${possessive(name || 'Their')} style`) : `${possessive(surname)} style`}</h3>
+          <AxisBars
+            you={axes}
+            youLabel={own ? 'You' : name || 'Them'}
+            them={fighter.axes}
+            themLabel={surname}
+          />
+        </div>
 
         {runnersUp?.length > 0 && (
           <div className="runners">
@@ -509,9 +559,7 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
           <ShareActions result={result} url={share} />
         ) : (
           <>
-            <p className="cta-text">
-              Think you fight like {lastName(fighter.name)} too? Or are you a different beast?
-            </p>
+            <p className="cta-text">Think you fight like {surname} too?</p>
             <button className="btn btn-primary btn-big" onClick={onChallenge}>
               Find my fighter
             </button>
@@ -524,6 +572,14 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
           </button>
         )}
       </aside>
+
+      {!own && !ctaInView && (
+        <div className="sticky-cta phone-only">
+          <button className="btn btn-primary" onClick={onChallenge}>
+            Find my fighter
+          </button>
+        </div>
+      )}
     </section>
   );
 }
@@ -553,6 +609,38 @@ function Stat({ label, value }) {
       <strong>{value}</strong>
       <span>{label}</span>
     </div>
+  );
+}
+
+// One button under the result on phones: the share sheet where there is one,
+// otherwise copy the link.
+function QuickShare({ result, url }) {
+  const [copied, setCopied] = useState(false);
+  const { fighter, name } = result;
+  const text = `${name ? `${name} fights` : 'I fight'} like ${fighter.name}. Which UFC fighter are you?`;
+  const go = async () => {
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: 'Which UFC Fighter Are You?', text, url });
+        track('share', { method: 'native_inline', fighter: fighter.slug });
+      } catch {
+        /* dismissed */
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt('Copy your link:', url);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+    track('share', { method: 'copy_inline', fighter: fighter.slug });
+  };
+  return (
+    <button className="btn btn-primary btn-big" onClick={go}>
+      {copied ? 'Link copied' : 'Share my result'}
+    </button>
   );
 }
 

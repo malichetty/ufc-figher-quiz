@@ -60,7 +60,7 @@ function card(f) {
       h(
         'div',
         { alignItems: 'center', justifyContent: 'space-between' },
-        h('div', { fontFamily: 'Oswald', fontSize: 26, color: GOLD, letterSpacing: 6 }, 'WHICH UFC FIGHTER ARE YOU?'),
+        h('div', { fontFamily: 'Bebas', fontSize: 44, color: GOLD, letterSpacing: 4 }, 'I FIGHT LIKE'),
         h(
           'div',
           { background: RED, padding: '6px 18px', fontFamily: 'Bebas', fontSize: 34, letterSpacing: 2 },
@@ -69,7 +69,7 @@ function card(f) {
       ),
       h(
         'div',
-        { flexDirection: 'column', marginTop: 26 },
+        { flexDirection: 'column', marginTop: 8 },
         f.nickname
           ? h('div', { fontFamily: 'Bebas', fontSize: 46, color: GOLD, letterSpacing: 2 }, `"${f.nickname.toUpperCase()}"`)
           : null,
@@ -82,12 +82,12 @@ function card(f) {
         { marginTop: 'auto', marginBottom: 34, gap: 18, alignItems: 'flex-end' },
         stat('STRIKES / MIN', f.slpm.toFixed(2)),
         stat('TAKEDOWNS / 15', f.tdAvg.toFixed(2)),
-        stat('UFC FINISHES', f.koWins + f.subWins),
         h(
           'div',
           { flexDirection: 'column', alignItems: 'flex-end', marginLeft: 'auto' },
-          h('div', { fontFamily: 'Oswald', fontSize: 22, color: '#9a9a9a', letterSpacing: 3 }, 'WHO DO YOU FIGHT LIKE?'),
-          h('div', { fontFamily: 'Bebas', fontSize: 44, color: GOLD, letterSpacing: 2 }, 'UFC.ARISTOTLE.ME'),
+          h('div', { fontFamily: 'Oswald', fontSize: 24, color: '#e5e5e5', letterSpacing: 2 }, 'WHICH UFC FIGHTER ARE YOU?'),
+          h('div', { fontFamily: 'Bebas', fontSize: 40, color: '#fff', letterSpacing: 2, marginTop: 4 }, 'YOUR TURN · SIX QUESTIONS'),
+          h('div', { fontFamily: 'Bebas', fontSize: 40, color: GOLD, letterSpacing: 2 }, 'UFC.ARISTOTLE.ME'),
         ),
       ),
     ),
