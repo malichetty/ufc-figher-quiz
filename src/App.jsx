@@ -30,7 +30,7 @@ const track = (event, params) => {
   if (typeof window.gtag === 'function') window.gtag('event', event, params);
 };
 
-const lastName = (name) => name.split(' ').slice(-1)[0];
+const lastName = (name) => name.replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/i, '').split(' ').slice(-1)[0];
 const possessive = (word) => (word === 'Their' ? word : `${word}'s`);
 const typePlural = (code) => TYPES[code].name.replace(/^The /, '') + 's';
 
@@ -66,7 +66,7 @@ function initialState() {
     return { stage: 'intro', notice: 'That fighter is no longer in the active roster. Find your own match below.' };
   }
   if (share.legacy) window.history.replaceState({}, '', sharePath(share));
-  const own = store.get('ufcq:last') === sharePath({ ...share, name: '' });
+  const own = store.get('ufcq:last') === sharePath(share);
   return { stage: 'result', result, own };
 }
 
@@ -127,7 +127,7 @@ export default function App() {
     const match = findMatch(roster, next, division);
     const r = { ...match, name: sanitizeName(name), answers: next, division };
     const path = sharePath({ slug: match.fighter.slug, name: r.name, answers: next, division });
-    store.set('ufcq:last', sharePath({ slug: match.fighter.slug, answers: next, division }));
+    store.set('ufcq:last', path);
     setResult(r);
     setOwn(true);
     setStage('reveal');

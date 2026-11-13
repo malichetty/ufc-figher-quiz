@@ -3,7 +3,7 @@
 // fighter and the sharer's name. No image rendering, no storage, no API calls.
 import roster from '../../src/data/roster.json';
 import { TYPES } from '../../src/lib/types.js';
-import { sanitizeName, SITE_URL } from '../../src/lib/share.js';
+import { parseAnswers, parseDivision, sanitizeName, sharePath, SITE_URL } from '../../src/lib/share.js';
 
 const bySlug = new Map(roster.fighters.map((f) => [f.slug, f]));
 
@@ -36,13 +36,20 @@ export async function onRequestGet({ request, params, env }) {
 
   const reqUrl = new URL(request.url);
   const name = sanitizeName(reqUrl.searchParams.get('n'));
-  const canonical = new URL(`/r/${fighter.slug}`, SITE_URL);
-  if (name) canonical.searchParams.set('n', name);
+  // Some apps open og:url rather than the shared link, so it keeps everything
+  // the result page needs (answers and division), validated.
+  const canonical = new URL(
+    sharePath({
+      slug: fighter.slug,
+      name,
+      answers: parseAnswers(reqUrl.searchParams.get('a')),
+      division: parseDivision(reqUrl.searchParams.get('d')),
+    }),
+    SITE_URL,
+  );
   // Image from the serving origin, so preview deployments show their own images.
   const p = previewFor(fighter, name, canonical.toString(), reqUrl.origin);
 
-  const headers = new Headers(page.headers);
-  headers.set('Cache-Control', 'public, max-age=300');
   return new HTMLRewriter()
     .on('title', { element: (el) => el.setInnerContent(p.title) })
     .on('meta[name="description"]', new SetAttr(p.description))
@@ -50,9 +57,11 @@ export async function onRequestGet({ request, params, env }) {
     .on('meta[property="og:description"]', new SetAttr(p.description))
     .on('meta[property="og:url"]', new SetAttr(p.url))
     .on('meta[property="og:image"]', new SetAttr(p.image))
+    .on('meta[property="og:image:width"]', new SetAttr('1200'))
+    .on('meta[property="og:image:height"]', new SetAttr('630'))
     .on('meta[name="twitter:title"]', new SetAttr(p.ogTitle))
     .on('meta[name="twitter:description"]', new SetAttr(p.description))
     .on('meta[name="twitter:url"]', new SetAttr(p.url))
     .on('meta[name="twitter:image"]', new SetAttr(p.image))
-    .transform(new Response(page.body, { status: 200, headers }));
+    .transform(page);
 }

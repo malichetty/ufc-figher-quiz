@@ -38,6 +38,8 @@ test('US-001 pool is current and includes every champion', () => {
   const cutoff = new Date(Date.parse(roster.snapshot) - 548 * 86400000).toISOString().slice(0, 10);
   for (const f of roster.fighters) assert.ok(f.lastFight >= cutoff, `${f.name} last fought ${f.lastFight}`);
   assert.ok(roster.fighters.filter((f) => f.champion).length >= 8);
+  // A champion with only 3 UFC fights (seen: Kayla Harrison) must still be in.
+  assert.ok(roster.fighters.some((f) => f.slug === 'kayla-harrison'));
   assert.equal(new Set(roster.fighters.map((f) => f.slug)).size, roster.fighters.length);
 });
 
@@ -52,6 +54,7 @@ test('US-002 names are reduced to allowed characters', () => {
   assert.equal(sanitizeName("  José   O'Neil-Smith  "), "José O'Neil-Smith");
   assert.equal(sanitizeName('x'.repeat(50)).length, 20);
   assert.equal(sanitizeName(null), '');
+  assert.equal(sanitizeName(`${'x'.repeat(19)}𝐀b`), `${'x'.repeat(19)}𝐀`);
 });
 
 test('US-003 share URLs round-trip, and old links still parse', () => {
@@ -69,5 +72,8 @@ test('US-003 share URLs round-trip, and old links still parse', () => {
   assert.equal(bad.answers, null);
   assert.equal(bad.division, 'all');
   assert.equal(parseShareLocation('/', '?result=jon-jones&from=Aris').slug, 'jon-jones');
+  // Old links kept punctuation from the fighter's name.
+  assert.equal(parseShareLocation('/', "?result=sean-o'malley").slug, 'sean-o-malley');
+  assert.equal(parseShareLocation('/', '?result=khalil-rountree-jr.').slug, 'khalil-rountree-jr');
   assert.equal(parseShareLocation('/r/<bad>', ''), null);
 });

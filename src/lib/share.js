@@ -5,14 +5,23 @@ export const SITE_URL = 'https://ufc.aristotle.me';
 export const NAME_MAX = 20;
 const DIVISIONS = ['all', 'men', 'women'];
 
+export function slugify(name) {
+  return String(name)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export function sanitizeName(raw) {
-  return String(raw ?? '')
+  const clean = String(raw ?? '')
     .normalize('NFC')
     .replace(/[^\p{L}\p{M} '.-]/gu, '')
     .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, NAME_MAX)
     .trim();
+  // Slice by code point so a two-unit letter is never cut in half.
+  return Array.from(clean).slice(0, NAME_MAX).join('').trim();
 }
 
 export function parseAnswers(raw) {
@@ -59,7 +68,9 @@ export function parseShareLocation(pathname, search) {
       return null;
     }
   } else if (params.get('result')) {
-    slug = params.get('result').toLowerCase();
+    // The old app built slugs by only swapping spaces for hyphens, so they
+    // can hold punctuation ("sean-o'malley", "khalil-rountree-jr.").
+    slug = slugify(params.get('result'));
     name = params.get('from');
   }
   if (!slug || !/^[a-z0-9-]{1,80}$/.test(slug)) return null;

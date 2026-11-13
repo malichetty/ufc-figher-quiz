@@ -1,6 +1,7 @@
 // Turns raw UFC Stats API fighter rows into the quiz roster (PRD FR-1, FR-2).
 // Pure: no I/O, so the build script and tests share it.
 import { typeFromAxes, TYPE_CODES } from './types.js';
+import { slugify } from './share.js';
 
 export const ROSTER_RULES = {
   activeDays: 548, // ~18 months before the newest fight in the data
@@ -10,15 +11,6 @@ export const ROSTER_RULES = {
   // list so a few fighters don't collect every answer set of that type.
   typeFloor: { men: 14, women: 6 },
 };
-
-export function slugify(name) {
-  return String(name)
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
 
 function percentileFn(values) {
   const sorted = [...values].sort((a, b) => a - b);
@@ -50,6 +42,7 @@ function ufcSummary(row) {
   const ko = wins.filter((f) => /KO/.test(f.method || '')).length;
   const sub = wins.filter((f) => (f.method || '') === 'SUB').length;
   const dec = wins.filter((f) => /DEC/.test(f.method || '')).length;
+  // The API has no scheduled-rounds field; going past round 3 marks a five-round fight.
   const fiveRound = fights.filter((f) => (f.round || 0) >= 4).length;
   const lastFight = fights.reduce((m, f) => (f.date > m ? f.date : m), '');
   return { fights: fights.length, wins: wins.length, losses, ko, sub, dec, fiveRound, lastFight };
@@ -69,7 +62,8 @@ export function buildRoster(rows, rules = ROSTER_RULES) {
     if (!row.name || !row.weight_class || row.weight_class === 'Catch Weight') continue;
     if (!(row.slpm > 0)) continue;
     const u = ufcSummary(row);
-    if (u.fights < rules.minUfcFights || u.lastFight < cutoff) continue;
+    // Champions skip the fight-count rule (a new champion can have only 3).
+    if ((u.fights < rules.minUfcFights && !row.is_champion) || u.lastFight < cutoff) continue;
     active.push({ row, u });
   }
 
