@@ -165,6 +165,7 @@ export default function App() {
     setStage('reveal');
     track('quiz_complete', { type: match.type, fighter: match.fighter.slug, division });
     window.setTimeout(() => {
+      if (fresh.current !== r) return; // the person navigated away during the reveal
       window.history.pushState({}, '', path);
       setStage('result');
     }, 1400);
