@@ -1,0 +1,714 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import roster from './data/roster.json';
+import { QUESTIONS } from './lib/questions.js';
+import { AXES, TYPES } from './lib/types.js';
+import { findMatch, rank, scoreFighter, userAxes, whyYouMatch } from './lib/match.js';
+import { NAME_MAX, parseShareLocation, sanitizeName, sharePath, shareUrl } from './lib/share.js';
+import { saveResultImage } from './lib/card-image.js';
+import { fetchTally, prepareBotCheck, recordTally } from './lib/tally.js';
+import { statusOf } from './lib/status.js';
+
+const bySlug = new Map(roster.fighters.map((f) => [f.slug, f]));
+const API_DOCS = 'https://ufcapi.aristotle.me/docs';
+
+const store = {
+  get(key) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set(key, value) {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      /* private mode: the app works without it */
+    }
+  },
+};
+
+const track = (event, params) => {
+  if (typeof window.gtag === 'function') window.gtag('event', event, params);
+};
+
+const lastName = (name) => name.replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/i, '').split(' ').slice(-1)[0];
+const possessive = (word) => (word === 'Their' ? word : `${word}'s`);
+const typePlural = (code) => TYPES[code].name.replace(/^The /, '') + 's';
+
+// Everything the result screen shows, rebuilt from a share URL or a finished quiz.
+function buildResult({ slug, name, answers, division }) {
+  const fighter = bySlug.get(slug);
+  if (!fighter) return null;
+  const base = { fighter, type: fighter.type, name, answers, division };
+  if (!answers) return base;
+  const fresh = findMatch(roster, answers, division);
+  if (fresh && fresh.fighter.slug === slug) return { ...base, ...fresh, type: fighter.type };
+  // The roster moved on since the link was made: keep the linked fighter and
+  // score them against the saved answers.
+  const axes = userAxes(answers);
+  const { ranked } = rank(roster, answers, division);
+  return {
+    ...base,
+    axes,
+    matchPct: scoreFighter(axes, fighter.type, fighter).matchPct,
+    runnersUp: ranked
+      .filter((r) => r.fighter.slug !== slug)
+      .slice(0, 2)
+      .map((r) => ({ fighter: r.fighter, matchPct: r.matchPct })),
+  };
+}
+
+function initialState() {
+  const share = parseShareLocation(window.location.pathname, window.location.search);
+  if (!share) return { stage: 'intro' };
+  const result = buildResult(share);
+  if (!result) {
+    window.history.replaceState({}, '', '/');
+    return { stage: 'intro', notice: 'That fighter is no longer in the active roster. Find your own match below.' };
+  }
+  if (share.legacy) window.history.replaceState({}, '', sharePath(share));
+  const own = store.get('ufcq:last') === sharePath(share);
+  return { stage: 'result', result, own };
+}
+
+export default function App() {
+  const [init] = useState(initialState);
+  const [stage, setStage] = useState(init.stage);
+  const [notice, setNotice] = useState(init.notice || '');
+  const [result, setResult] = useState(init.result || null);
+  const [own, setOwn] = useState(!!init.own);
+  const [challenger, setChallenger] = useState(null);
+  const [name, setName] = useState(() => sanitizeName(store.get('ufcq:name')));
+  const [division, setDivision] = useState(() => store.get('ufcq:division') || 'all');
+  const [answers, setAnswers] = useState([]);
+  const [tally, setTally] = useState(null);
+  // The result whose counts came from the record call; a cached read must not
+  // overwrite those fresher numbers.
+  const fresh = useRef(null);
+
+  useEffect(() => {
+    if (init.stage === 'result' && !init.own) track('shared_view', { fighter: init.result.fighter.slug });
+  }, [init]);
+
+  useEffect(() => {
+    const onPop = () => {
+      fresh.current = null;
+      const s = initialState();
+      setStage(s.stage);
+      setResult(s.result || null);
+      setOwn(!!s.own);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [stage]);
+
+  // The counter: totals on the start screen, the fighter's count on any
+  // result page. A quiz just finished gets its numbers from the record call.
+  useEffect(() => {
+    let live = true;
+    const show = (t) => live && setTally(t);
+    if (stage === 'intro') fetchTally().then(show);
+    if (stage === 'result' && result && fresh.current !== result) fetchTally(result.fighter).then(show);
+    return () => {
+      live = false;
+    };
+  }, [stage, result]);
+
+  useEffect(() => {
+    if (stage === 'result' && result) {
+      const who = own ? (result.name ? `${result.name} fights` : 'I fight') : `${result.name || 'Your friend'} fights`;
+      document.title = `${who} like ${result.fighter.name} | Which UFC Fighter Are You?`;
+    } else {
+      document.title = 'Which UFC Fighter Are You?';
+    }
+  }, [stage, result, own]);
+
+  const start = () => {
+    const clean = sanitizeName(name);
+    setName(clean);
+    store.set('ufcq:name', clean);
+    store.set('ufcq:division', division);
+    setAnswers([]);
+    setNotice('');
+    setStage('quiz');
+    prepareBotCheck();
+    track('quiz_start', { division });
+  };
+
+  const answer = (choice) => {
+    const next = [...answers, choice];
+    setAnswers(next);
+    if (next.length < QUESTIONS.length) return;
+    const match = findMatch(roster, next, division);
+    const r = { ...match, name: sanitizeName(name), answers: next, division };
+    const path = sharePath({ slug: match.fighter.slug, name: r.name, answers: next, division });
+    store.set('ufcq:last', path);
+    setTally(null);
+    fresh.current = r;
+    // A retake with the same answers reads the counts instead of counting
+    // twice; only a count that went through is remembered.
+    // Only show counts that belong to the result still on screen.
+    const show = (t) => fresh.current === r && setTally(t);
+    if (store.get('ufcq:counted') === path) fetchTally(match.fighter).then(show);
+    else
+      recordTally(match.fighter).then((t) => {
+        if (t) store.set('ufcq:counted', path);
+        show(t);
+      });
+    setResult(r);
+    setOwn(true);
+    setStage('reveal');
+    track('quiz_complete', { type: match.type, fighter: match.fighter.slug, division });
+    window.setTimeout(() => {
+      if (fresh.current !== r) return; // the person navigated away during the reveal
+      window.history.pushState({}, '', path);
+      setStage('result');
+    }, 1400);
+  };
+
+  const back = () => {
+    if (answers.length === 0) setStage('intro');
+    else setAnswers(answers.slice(0, -1));
+  };
+
+  const takeChallenge = () => {
+    fresh.current = null;
+    if (result && !own) setChallenger(result);
+    window.history.pushState({}, '', '/');
+    setResult(null);
+    setStage('intro');
+  };
+
+  const retake = () => {
+    fresh.current = null;
+    window.history.pushState({}, '', '/');
+    setResult(null);
+    setChallenger(null);
+    setStage('intro');
+  };
+
+  return (
+    <div className="app">
+      <div className="bg" aria-hidden="true" />
+      <main className="content">
+        {stage === 'intro' && (
+          <Intro
+            name={name}
+            setName={setName}
+            division={division}
+            setDivision={setDivision}
+            onStart={start}
+            notice={notice}
+            challenger={challenger}
+            tally={tally}
+          />
+        )}
+        {stage === 'quiz' && (
+          <Quiz index={answers.length} name={sanitizeName(name)} onAnswer={answer} onBack={back} />
+        )}
+        {stage === 'reveal' && <Reveal />}
+        {stage === 'result' && result && (
+          <Result
+            result={result}
+            own={own}
+            challenger={challenger}
+            tally={tally}
+            onRetake={retake}
+            onChallenge={takeChallenge}
+          />
+        )}
+      </main>
+      <footer className="site-footer">
+        Fighter data from the <a href={API_DOCS}>UFC Stats API</a>, active roster as of {formatDate(roster.snapshot)}.
+        Not affiliated with the UFC.
+      </footer>
+    </div>
+  );
+}
+
+function formatDate(iso) {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function Intro({ name, setName, division, setDivision, onStart, notice, challenger, tally }) {
+  return (
+    <section className="intro fade-in">
+      {notice && <p className="notice">{notice}</p>}
+      {challenger && (
+        <p className="challenge-banner">
+          {challenger.name || 'Your friend'} got <strong>{challenger.fighter.name}</strong>. Your turn.
+        </p>
+      )}
+      <p className="eyebrow">Six questions. No sign-up.</p>
+      <h1 className="title">
+        Which UFC fighter <span>are you?</span>
+      </h1>
+      <p className="lede">
+        Are you McGregor, Khabib or someone nobody saw coming? Six questions match your style against{' '}
+        {roster.fighters.length} UFC fighters, from today's champions to the legends, using their real fight stats.
+      </p>
+      <form
+        className="start-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onStart();
+        }}
+      >
+        <label className="field">
+          <span>Your name (optional)</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={NAME_MAX * 3}
+            placeholder="So friends know it's you"
+            autoComplete="given-name"
+            enterKeyHint="go"
+          />
+        </label>
+        <fieldset className="segmented">
+          <legend>Match me with</legend>
+          {[
+            ['all', 'Anyone'],
+            ['men', "Men's divisions"],
+            ['women', "Women's divisions"],
+          ].map(([value, label]) => (
+            <label key={value} className={division === value ? 'on' : ''}>
+              <input
+                type="radio"
+                name="division"
+                value={value}
+                checked={division === value}
+                onChange={() => setDivision(value)}
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+        <button type="submit" className="btn btn-primary btn-big">
+          Find my fighter
+        </button>
+      </form>
+      {tally?.total > 0 && (
+        <p className="social-proof">
+          <strong>{tally.total.toLocaleString()}</strong> people have found their fighter
+        </p>
+      )}
+    </section>
+  );
+}
+
+function Quiz({ index, name, onAnswer, onBack }) {
+  const q = QUESTIONS[index];
+  const heading = useRef(null);
+  // Keyboard and screen-reader users land on each new question.
+  useEffect(() => {
+    heading.current?.focus();
+  }, [index]);
+  return (
+    <section className="quiz fade-in" key={q.id}>
+      <div className="progress" aria-hidden="true">
+        {QUESTIONS.map((x, i) => (
+          <span key={x.id} className={i <= index ? 'done' : ''} />
+        ))}
+      </div>
+      <p className="eyebrow">
+        Question {index + 1} of {QUESTIONS.length}
+        {name && index === 0 ? `. Let's go, ${name}.` : ''}
+      </p>
+      <h2 className="question" ref={heading} tabIndex={-1} aria-label={`Question ${index + 1} of ${QUESTIONS.length}: ${q.question}`}>
+        {q.question}
+      </h2>
+      <div className="options">
+        {q.options.map((o, i) => (
+          <button key={o.text} className="option" onClick={() => onAnswer(i)}>
+            <span className="letter">{String.fromCharCode(65 + i)}</span>
+            {o.text}
+          </button>
+        ))}
+      </div>
+      <button className="link-btn" onClick={onBack}>
+        ← Back
+      </button>
+    </section>
+  );
+}
+
+function Reveal() {
+  return (
+    <section className="reveal fade-in" role="status">
+      <div className="spinner" />
+      <p>Scoring you against {roster.fighters.length} fighters…</p>
+    </section>
+  );
+}
+
+// `who` is either a name (third person) or the pronoun the caller chose.
+function lean(who, plural, v, axis) {
+  if (Math.abs(v) < 0.25) return `${who} ${plural ? 'are' : 'is'} near the middle`;
+  return `${who} ${plural ? 'lean' : 'leans'} ${(v > 0 ? axis.plus : axis.minus).toLowerCase()}`;
+}
+
+function AxisBars({ you, them, themLabel, youLabel = 'You', youPronoun = youLabel === 'You' ? 'You' : null }) {
+  return (
+    <div className="axes">
+      {AXES.map((a) => (
+        <div className="axis" key={a.key}>
+          <div className="axis-labels">
+            <span>{a.minus}</span>
+            <span>{a.plus}</span>
+          </div>
+          <p className="sr-only">
+            {[
+              you && lean(youPronoun || youLabel, Boolean(youPronoun), you[a.key], a),
+              them && lean(themLabel, false, them[a.key], a),
+            ]
+              .filter(Boolean)
+              .join('; ')}
+            .
+          </p>
+          <div className="axis-track" aria-hidden="true">
+            {them && (
+              <span
+                className="dot them"
+                style={{ left: `${((them[a.key] + 1) / 2) * 100}%` }}
+                title={themLabel}
+              />
+            )}
+            {you && <span className="dot you" style={{ left: `${((you[a.key] + 1) / 2) * 100}%` }} title={youLabel} />}
+          </div>
+        </div>
+      ))}
+      <div className="axis-legend" aria-hidden="true">
+        {you && (
+          <span>
+            <i className="dot you" /> {youLabel}
+          </span>
+        )}
+        {them && (
+          <span>
+            <i className="dot them" /> {themLabel}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
+  const { fighter, type, name, axes, matchPct, runnersUp, answers, division } = result;
+  const t = TYPES[type];
+  const share = useMemo(
+    () => (own ? shareUrl({ slug: fighter.slug, name, answers, division }) : null),
+    [own, fighter.slug, name, answers, division],
+  );
+  const reasons = answers ? whyYouMatch(fighter, answers, own ? 'You' : name || 'They') : [];
+  const rarity = Math.round((roster.typeShare[type] || 0) * 100);
+  const status = statusOf(fighter);
+  const counted = tally?.total > 0 && tally.fighter > 0;
+  const surname = lastName(fighter.name);
+  const versus = challenger && own && challenger.axes && axes;
+  const heading = own
+    ? name
+      ? `${name}, you fight like`
+      : 'You fight like'
+    : `${name || 'Your friend'} fights like`;
+  const nameRef = useRef(null);
+  useEffect(() => {
+    nameRef.current?.focus();
+  }, [fighter.slug]);
+  // The sticky "Find my fighter" bar appears once the inline one scrolls away.
+  const ctaRef = useRef(null);
+  const [ctaInView, setCtaInView] = useState(true);
+  useEffect(() => {
+    if (own || !ctaRef.current || typeof IntersectionObserver !== 'function') return undefined;
+    const io = new IntersectionObserver(([e]) => setCtaInView(e.isIntersecting));
+    io.observe(ctaRef.current);
+    return () => io.disconnect();
+  }, [own]);
+
+  return (
+    <section className={`result fade-in ${own ? 'is-own' : 'is-friend'}`}>
+      <article className="card">
+        <div className="card-bar" />
+        <p className="card-kicker">{heading}</p>
+        {fighter.nickname && <p className="nickname">“{fighter.nickname}”</p>}
+        <h1 className="fighter-name" ref={nameRef} tabIndex={-1}>
+          {fighter.name}
+        </h1>
+        <p className="fighter-meta">
+          {fighter.division} · {fighter.record}
+          {status && <span className={`status ${status.className}`}>{status.label}</span>}
+        </p>
+        <div className="type-row">
+          <span className="type-badge">{t.name}</span>
+          {matchPct != null && <span className="match-pct">{matchPct}% match</span>}
+        </div>
+
+        {/* The next action sits right under the result on phones (desktop
+            keeps the sidebar). */}
+        {own ? (
+          <div className="inline-cta phone-only">
+            <QuickShare result={result} url={share} />
+          </div>
+        ) : (
+          <div className="inline-cta phone-only" ref={ctaRef}>
+            <p className="cta-text">Think you fight like {surname} too? Or are you a different beast?</p>
+            <button className="btn btn-primary btn-big" onClick={onChallenge}>
+              Find my fighter
+            </button>
+            <p className="small">Six questions, about a minute.</p>
+          </div>
+        )}
+
+        {versus && (
+          <div className="versus">
+            <h3>You vs {challenger.name || 'your friend'}</h3>
+            <div className="versus-row">
+              <div>
+                <span className="vs-label">You</span>
+                <strong>{fighter.name}</strong>
+                <span>{t.name}</span>
+              </div>
+              <span className="vs">VS</span>
+              <div>
+                <span className="vs-label">{challenger.name || 'Friend'}</span>
+                <strong>{challenger.fighter.name}</strong>
+                <span>{TYPES[challenger.type].name}</span>
+              </div>
+            </div>
+            <p className="vs-verdict">{verdict(axes, challenger.axes, challenger.name)}</p>
+            <AxisBars you={axes} them={challenger.axes} themLabel={challenger.name || 'Friend'} />
+          </div>
+        )}
+
+        <p className="type-desc">{own ? t.description : t.about}</p>
+        <p className="rarity">
+          Only {rarity}% of active UFC fighters are {typePlural(type)}.
+        </p>
+        {counted && (
+          <p className="social-proof small-proof">
+            {own && tally.fighter === 1 ? (
+              <>You're the first person to get {surname}.</>
+            ) : own ? (
+              <>
+                You're one of <strong>{tally.fighter.toLocaleString()}</strong> people who got {surname}.
+              </>
+            ) : (
+              <>
+                <strong>{tally.fighter.toLocaleString()}</strong> {tally.fighter === 1 ? 'person has' : 'people have'}{' '}
+                gotten {surname}.
+              </>
+            )}{' '}
+            {tally.typed > 0 && <>{Math.min(100, Math.round((tally.type / tally.typed) * 100))}% of quiz takers are {typePlural(type)}.</>}
+          </p>
+        )}
+
+        {reasons.length > 0 && (
+          <div className="why">
+            <h3>Why {surname}</h3>
+            <ul>
+              {reasons.map((r) => (
+                <li key={r.answer}>
+                  <span className="why-answer">{r.answer}</span> {r.evidence}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="stats">
+          <Stat label="Strikes / min" value={fighter.slpm.toFixed(2)} />
+          <Stat label="Strike accuracy" value={`${Math.round(fighter.strAcc * 100)}%`} />
+          <Stat label="Takedowns / 15" value={fighter.tdAvg.toFixed(2)} />
+          <Stat label="UFC finishes" value={fighter.koWins + fighter.subWins} />
+        </div>
+
+        <div className="style-block">
+          <h3>{axes ? (own ? 'Your style' : `${possessive(name || 'Their')} style`) : `${possessive(surname)} style`}</h3>
+          <AxisBars
+            you={axes}
+            youLabel={own ? 'You' : name || 'Them'}
+            youPronoun={own ? 'You' : name ? null : 'They'}
+            them={fighter.axes}
+            themLabel={surname}
+          />
+        </div>
+
+        {runnersUp?.length > 0 && (
+          <div className="runners">
+            <h3>{own ? 'You also fight like' : 'Also close'}</h3>
+            {runnersUp.map((r) => (
+              <div className="runner" key={r.fighter.slug}>
+                <div>
+                  <strong>{r.fighter.name}</strong>
+                  <span>
+                    {[TYPES[r.fighter.type].name, r.fighter.division, statusOf(r.fighter)?.label]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </article>
+
+      <aside className="actions">
+        {own ? (
+          <ShareActions result={result} url={share} />
+        ) : (
+          <>
+            <p className="cta-text">Think you fight like {surname} too?</p>
+            <button className="btn btn-primary btn-big" onClick={onChallenge}>
+              Find my fighter
+            </button>
+            <p className="small">Six questions, about a minute.</p>
+          </>
+        )}
+        {own && (
+          <button className="link-btn" onClick={onRetake}>
+            ↺ Take it again
+          </button>
+        )}
+      </aside>
+
+      {!own && !ctaInView && (
+        <div className="sticky-cta phone-only">
+          <button className="btn btn-primary" onClick={onChallenge}>
+            Find my fighter
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+const ROLE = {
+  Striker: 'striker',
+  Grappler: 'grappler',
+  Pressure: 'pressure fighter',
+  Counter: 'counter fighter',
+  Finisher: 'finisher',
+  Decision: 'points fighter',
+};
+
+function verdict(a, b, otherName) {
+  const who = otherName || 'your friend';
+  const diffs = AXES.map((x) => ({ x, d: a[x.key] - b[x.key] })).sort((p, q) => Math.abs(q.d) - Math.abs(p.d));
+  const top = diffs[0];
+  if (Math.abs(top.d) < 0.35) return `You and ${who} fight almost the same way. That's a five-round war.`;
+  const you = ROLE[top.d > 0 ? top.x.plus : top.x.minus];
+  const them = ROLE[top.d > 0 ? top.x.minus : top.x.plus];
+  return `Biggest difference: you're the ${you}, ${who} is the ${them}.`;
+}
+
+function Stat({ label, value }) {
+  return (
+    <div className="stat">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+// One button under the result on phones: the share sheet where there is one,
+// otherwise copy the link.
+function QuickShare({ result, url }) {
+  const [copied, setCopied] = useState(false);
+  const { fighter, name } = result;
+  const text = `${name ? `${name} fights` : 'I fight'} like ${fighter.name}. Which UFC fighter are you?`;
+  const go = async () => {
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: 'Which UFC Fighter Are You?', text, url });
+        track('share', { method: 'native_inline', fighter: fighter.slug });
+      } catch {
+        /* dismissed */
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt('Copy your link:', url);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+    track('share', { method: 'copy_inline', fighter: fighter.slug });
+  };
+  return (
+    <button className="btn btn-primary btn-big" onClick={go}>
+      {copied ? 'Link copied' : 'Share my result'}
+    </button>
+  );
+}
+
+function ShareActions({ result, url }) {
+  const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { fighter, name } = result;
+  const text = `${name ? `${name} fights` : 'I fight'} like ${fighter.name}. Which UFC fighter are you?`;
+  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+  const nativeShare = async () => {
+    try {
+      await navigator.share({ title: 'Which UFC Fighter Are You?', text, url });
+      track('share', { method: 'native', fighter: fighter.slug });
+    } catch {
+      /* dismissed */
+    }
+  };
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt('Copy your link:', url);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+    track('share', { method: 'copy', fighter: fighter.slug });
+  };
+  const postX = () => {
+    const x = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    window.open(x, '_blank', 'noopener,width=600,height=500');
+    track('share', { method: 'x', fighter: fighter.slug });
+  };
+  const save = async () => {
+    setSaving(true);
+    try {
+      const how = await saveResultImage(result, TYPES[result.type]);
+      track('share', { method: `image_${how}`, fighter: fighter.slug });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      {canNativeShare && (
+        <button className="btn btn-primary" onClick={nativeShare}>
+          Share my result
+        </button>
+      )}
+      <button className={canNativeShare ? 'btn btn-outline' : 'btn btn-primary'} onClick={copy}>
+        {copied ? 'Link copied' : 'Copy my link'}
+      </button>
+      <button className="btn btn-outline" onClick={postX}>
+        Post on X
+      </button>
+      <button className="btn btn-outline" onClick={save} disabled={saving}>
+        {saving ? 'Drawing…' : 'Save image'}
+      </button>
+      <p className="small share-url">{url.replace('https://', '')}</p>
+    </>
+  );
+}

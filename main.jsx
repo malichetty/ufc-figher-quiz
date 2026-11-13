@@ -1,7 +1,10 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import UFCFighterQuiz from './ufc-fighter-quiz'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './src/App.jsx';
+import './src/app.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <UFCFighterQuiz />
-)
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);
