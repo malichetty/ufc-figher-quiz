@@ -230,8 +230,8 @@ function Intro({ name, setName, division, setDivision, onStart, notice, challeng
           <span>Your name (optional)</span>
           <input
             value={name}
-            onChange={(e) => setName(e.target.value.slice(0, NAME_MAX + 5))}
-            maxLength={NAME_MAX + 5}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={NAME_MAX * 3}
             placeholder="So friends know it's you"
             autoComplete="given-name"
             enterKeyHint="go"

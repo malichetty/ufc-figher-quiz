@@ -6,6 +6,7 @@ import { findMatch } from '../src/lib/match.js';
 import { QUESTIONS } from '../src/lib/questions.js';
 import { TYPE_CODES } from '../src/lib/types.js';
 import { parseShareLocation, sanitizeName, sharePath } from '../src/lib/share.js';
+import { buildRoster } from '../src/lib/roster.js';
 
 const roster = JSON.parse(readFileSync(new URL('../src/data/roster.json', import.meta.url), 'utf8'));
 
@@ -38,9 +39,24 @@ test('US-001 pool is current and includes every champion', () => {
   const cutoff = new Date(Date.parse(roster.snapshot) - 548 * 86400000).toISOString().slice(0, 10);
   for (const f of roster.fighters) assert.ok(f.lastFight >= cutoff, `${f.name} last fought ${f.lastFight}`);
   assert.ok(roster.fighters.filter((f) => f.champion).length >= 8);
-  // A champion with only 3 UFC fights (seen: Kayla Harrison) must still be in.
-  assert.ok(roster.fighters.some((f) => f.slug === 'kayla-harrison'));
   assert.equal(new Set(roster.fighters.map((f) => f.slug)).size, roster.fighters.length);
+});
+
+test('US-001 champions are always in the pool (seen: Kayla Harrison, 3 UFC fights)', () => {
+  const fight = (date, result = 'win', method = 'U-DEC') => ({ ufc: true, date, result, method, round: 3 });
+  const row = (id, extra) => ({
+    id, name: `Fighter ${id}`, weight_class: 'Lightweight', wins: 10, losses: 2, draws: 0,
+    slpm: 4, str_acc: 0.5, sapm: 3, str_def: 0.55, td_avg: 1, sub_avg: 0.3, is_champion: false,
+    fights: ['2026-10-01', '2026-05-01', '2025-12-01', '2025-06-01'].map((d) => fight(d)),
+    ...extra,
+  });
+  const rows = [1, 2, 3, 4, 5].map((i) => row(`f${i}`));
+  rows.push(row('champ', {
+    name: 'New Champion', weight_class: "Women's Bantamweight", is_champion: true,
+    fights: ['2025-01-10', '2024-08-01', '2024-02-01'].map((d) => fight(d, 'win', 'KO/TKO')),
+  }));
+  const built = buildRoster(rows);
+  assert.ok(built.fighters.some((f) => f.name === 'New Champion' && f.champion));
 });
 
 test('US-001 same answers always give the same fighter', () => {

@@ -62,8 +62,10 @@ export function buildRoster(rows, rules = ROSTER_RULES) {
     if (!row.name || !row.weight_class || row.weight_class === 'Catch Weight') continue;
     if (!(row.slpm > 0)) continue;
     const u = ufcSummary(row);
-    // Champions skip the fight-count rule (a new champion can have only 3).
-    if ((u.fights < rules.minUfcFights && !row.is_champion) || u.lastFight < cutoff) continue;
+    // A current champion is always in: a new one can have only 3 UFC fights,
+    // and a long title layoff can outlast the activity window.
+    const tooFew = u.fights < rules.minUfcFights || u.lastFight < cutoff;
+    if (!u.fights || (tooFew && !row.is_champion)) continue;
     active.push({ row, u });
   }
 
