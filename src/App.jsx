@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import roster from './data/roster.json';
 import { QUESTIONS } from './lib/questions.js';
 import { AXES, TYPES } from './lib/types.js';
@@ -83,6 +83,9 @@ export default function App() {
   const [division, setDivision] = useState(() => store.get('ufcq:division') || 'all');
   const [answers, setAnswers] = useState([]);
   const [tally, setTally] = useState(null);
+  // The result whose counts came from the record call; a cached read must not
+  // overwrite those fresher numbers.
+  const fresh = useRef(null);
 
   useEffect(() => {
     if (init.stage === 'result' && !init.own) track('shared_view', { fighter: init.result.fighter.slug });
@@ -103,12 +106,17 @@ export default function App() {
     window.scrollTo(0, 0);
   }, [stage]);
 
-  // The counter: totals on the start screen, the fighter's count on a shared
-  // result. A finished quiz gets its numbers from the record call instead.
+  // The counter: totals on the start screen, the fighter's count on any
+  // result page. A quiz just finished gets its numbers from the record call.
   useEffect(() => {
-    if (stage === 'intro') fetchTally().then(setTally);
-    if (stage === 'result' && result && !own) fetchTally(result.fighter).then(setTally);
-  }, [stage, result, own]);
+    let live = true;
+    const show = (t) => live && setTally(t);
+    if (stage === 'intro') fetchTally().then(show);
+    if (stage === 'result' && result && fresh.current !== result) fetchTally(result.fighter).then(show);
+    return () => {
+      live = false;
+    };
+  }, [stage, result]);
 
   useEffect(() => {
     if (stage === 'result' && result) {
@@ -138,10 +146,19 @@ export default function App() {
     const match = findMatch(roster, next, division);
     const r = { ...match, name: sanitizeName(name), answers: next, division };
     const path = sharePath({ slug: match.fighter.slug, name: r.name, answers: next, division });
-    const repeat = store.get('ufcq:last') === path;
     store.set('ufcq:last', path);
     setTally(null);
-    (repeat ? fetchTally(match.fighter) : recordTally(match.fighter)).then(setTally);
+    fresh.current = r;
+    // A retake with the same answers reads the counts instead of counting
+    // twice; only a count that went through is remembered.
+    // Only show counts that belong to the result still on screen.
+    const show = (t) => fresh.current === r && setTally(t);
+    if (store.get('ufcq:counted') === path) fetchTally(match.fighter).then(show);
+    else
+      recordTally(match.fighter).then((t) => {
+        if (t) store.set('ufcq:counted', path);
+        show(t);
+      });
     setResult(r);
     setOwn(true);
     setStage('reveal');
@@ -165,6 +182,7 @@ export default function App() {
   };
 
   const retake = () => {
+    fresh.current = null;
     window.history.pushState({}, '', '/');
     setResult(null);
     setChallenger(null);
@@ -411,7 +429,7 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
                 gotten {lastName(fighter.name)}.
               </>
             )}{' '}
-            {Math.round((tally.type / tally.total) * 100)}% of quiz takers are {typePlural(type)}.
+            {tally.typed > 0 && <>{Math.round((tally.type / tally.typed) * 100)}% of quiz takers are {typePlural(type)}.</>}
           </p>
         )}
 
@@ -472,9 +490,9 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
                 <div>
                   <strong>{r.fighter.name}</strong>
                   <span>
-                    {TYPES[r.fighter.type].name} · {r.fighter.division}
-                    {r.fighter.legend && r.fighter.tier === 'icon' ? ' · Legend' : ''}
-                    {r.fighter.champion ? ' · Champion' : ''}
+                    {[TYPES[r.fighter.type].name, r.fighter.division, statusOf(r.fighter)?.label]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </span>
                 </div>
               </div>

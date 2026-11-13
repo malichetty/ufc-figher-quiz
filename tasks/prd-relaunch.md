@@ -140,7 +140,7 @@ As a quiz taker, I want a fighter who is fighting now, so the result means somet
 - The weekly refresh fires one deploy per week; a deploy cannot trigger another.
 - The one write path (`POST /api/tally`) needs a single-use Turnstile token, accepts only known fighter and type keys, writes one D1 batch per quiz, and stops at 20,000 counts a day (about 80,000 D1 row writes, inside the free allowance). It is off until the database and secret exist.
 
-**Risks.** If the account is on the Workers Free plan and `/r/*` passes 100,000 views a day, the function errors for the rest of that day (static pages still work). Name text in previews is whatever the sharer typed, limited to letters and 20 characters; there is no profanity filter.
+**Risks.** Every start-screen view and every share-link view runs a Pages Function (`/api/tally`, plus `/r/*` for share links), even when the counter read is cached. On the Workers Free plan that is 100,000 function calls a day; past it, functions error for the rest of the day while static pages keep working, so the counter disappears and share previews fall back to the generic card. Name text in previews is whatever the sharer typed, limited to letters and 20 characters; there is no profanity filter.
 
 ## 8. Success Metrics
 

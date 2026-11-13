@@ -4,6 +4,7 @@ const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
 const TURNSTILE_JS = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
 export async function fetchTally(fighter) {
+  if (!SITE_KEY) return null;
   try {
     const q = fighter ? `?f=${encodeURIComponent(fighter.slug)}&t=${fighter.type}` : '';
     const res = await fetch(`/api/tally${q}`);
@@ -31,8 +32,10 @@ export function prepareBotCheck() {
     s.src = TURNSTILE_JS;
     s.async = true;
     s.onload = () => {
+      // Not hidden: in Managed mode Turnstile may need a tap, and
+      // 'interaction-only' shows the widget only then.
       const el = document.createElement('div');
-      el.style.display = 'none';
+      el.className = 'bot-check';
       document.body.appendChild(el);
       const id = window.turnstile.render(el, {
         sitekey: SITE_KEY,
@@ -51,12 +54,17 @@ export function prepareBotCheck() {
 async function getToken() {
   const w = widget && (await widget);
   if (!w) return null;
+  settle(null); // an earlier wait that never finished gives up its turn
   return new Promise((resolve) => {
-    const timer = setTimeout(() => settle(null), 8000);
-    pending = (token) => {
+    const mine = (token) => {
       clearTimeout(timer);
       resolve(token);
     };
+    const timer = setTimeout(() => {
+      if (pending === mine) pending = null;
+      resolve(null);
+    }, 30000);
+    pending = mine;
     window.turnstile.reset(w.id);
     window.turnstile.execute(w.el);
   });

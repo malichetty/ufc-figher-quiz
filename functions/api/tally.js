@@ -3,17 +3,19 @@
 // `TURNSTILE_SECRET`; without them it answers {enabled:false} and the app
 // simply hides the counter.
 import roster from '../../src/data/roster.json';
-import { handleGet, handlePost } from '../../src/lib/tally-core.js';
+import { canonicalGetUrl, handleGet, handlePost } from '../../src/lib/tally-core.js';
 
 const typeOf = new Map(roster.fighters.map((f) => [f.slug, f.type]));
 const isKnown = (slug, type) => typeOf.get(slug) === type;
 
 export async function onRequestGet({ request, env, waitUntil }) {
+  const url = canonicalGetUrl(new URL(request.url), isKnown);
+  const key = new Request(url.toString());
   const cache = caches.default;
-  const hit = await cache.match(request);
+  const hit = await cache.match(key);
   if (hit) return hit;
-  const res = await handleGet({ env, url: new URL(request.url), isKnown });
-  if (res.headers.get('Cache-Control')?.includes('max-age=60')) waitUntil(cache.put(request, res.clone()));
+  const res = await handleGet({ env, url, isKnown });
+  if (res.headers.get('Cache-Control')?.includes('max-age=60')) waitUntil(cache.put(key, res.clone()));
   return res;
 }
 

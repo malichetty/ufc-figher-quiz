@@ -211,7 +211,7 @@ export function buildRoster(rows, rules = ROSTER_RULES, stars = STARS) {
       women: a.division.startsWith("Women's"),
       champion: !!r.is_champion,
       tier: a.tier,
-      legend: !a.current,
+      legend: a.u.lastFight < cutoff && !r.is_champion,
       record: `${r.wins}-${r.losses}-${r.draws || 0}`,
       ufcWins: a.u.wins,
       ufcLosses: a.u.losses,

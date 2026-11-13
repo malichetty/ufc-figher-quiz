@@ -16,6 +16,30 @@ const json = (body, status = 200, extra = {}) =>
 const bump = (db, key) =>
   db.prepare('INSERT INTO tally (key, n) VALUES (?1, 1) ON CONFLICT(key) DO UPDATE SET n = n + 1 RETURNING n').bind(key);
 
+// Bumps the day's row only while it is under the cap, so a capped day costs no
+// further writes. Returns null once the cap is reached.
+const bumpDay = (db, key, cap) =>
+  db
+    .prepare('INSERT INTO tally (key, n) VALUES (?1, 1) ON CONFLICT(key) DO UPDATE SET n = n + 1 WHERE n < ?2 RETURNING n')
+    .bind(key, cap)
+    .first('n');
+
+export const enabled = (env) => Boolean(env.DB && env.TURNSTILE_SECRET);
+
+// The only GET URLs worth caching: the total, or a known fighter and type.
+// Everything else maps onto one of these, so junk query strings can't make
+// every request a cache miss.
+export function canonicalGetUrl(url, isKnown) {
+  const out = new URL('/api/tally', url.origin);
+  const slug = url.searchParams.get('f');
+  const type = url.searchParams.get('t');
+  if (slug && type && isKnown(slug, type)) {
+    out.searchParams.set('f', slug);
+    out.searchParams.set('t', type);
+  }
+  return out;
+}
+
 async function readCounts(db, keys) {
   const marks = keys.map((_, i) => `?${i + 1}`).join(', ');
   const { results } = await db
@@ -28,14 +52,16 @@ async function readCounts(db, keys) {
 
 // GET /api/tally?f=<slug>&t=<type>: totals for the intro and result pages.
 export async function handleGet({ env, url, isKnown }) {
-  if (!env.DB) return json({ enabled: false });
+  if (!enabled(env)) return json({ enabled: false });
   const slug = url.searchParams.get('f');
   const type = url.searchParams.get('t');
-  const keys = ['total'];
+  // 'typed' counts only quizzes recorded with a type; 'total' also carries the
+  // 62 quizzes the old counter saw, which have no type.
+  const keys = ['total', 'typed'];
   if (slug && type && isKnown(slug, type)) keys.push(`fighter:${slug}`, `type:${type}`);
-  const [total, fighter, typeCount] = await readCounts(env.DB, keys);
+  const [total, typed, fighter, typeCount] = await readCounts(env.DB, keys);
   return json(
-    { enabled: true, total, fighter: fighter || 0, type: typeCount || 0 },
+    { enabled: true, total, typed, fighter: fighter || 0, type: typeCount || 0 },
     200,
     { 'Cache-Control': 'public, max-age=60' },
   );
@@ -43,8 +69,8 @@ export async function handleGet({ env, url, isKnown }) {
 
 // POST /api/tally {slug, type, token}: count one finished quiz.
 export async function handlePost({ env, request, isKnown, fetchImpl = fetch, today }) {
-  if (!env.DB || !env.TURNSTILE_SECRET) return json({ enabled: false }, 503);
-  if (Number(request.headers.get('Content-Length') || 0) > 2048) return json({ error: 'too large' }, 413);
+  if (!enabled(env)) return json({ enabled: false }, 503);
+  if (Number(request.headers.get('Content-Length') || 0) > 8192) return json({ error: 'too large' }, 413);
   let body;
   try {
     body = await request.json();
@@ -71,14 +97,15 @@ export async function handlePost({ env, request, isKnown, fetchImpl = fetch, tod
   }
   if (!verdict?.success) return json({ error: 'bot check failed' }, 403);
 
-  const day = await bump(env.DB, `day:${today}`).first('n');
-  if (day > DAILY_CAP) return json({ error: 'daily cap' }, 429);
+  const day = await bumpDay(env.DB, `day:${today}`, DAILY_CAP);
+  if (day == null) return json({ error: 'daily cap' }, 429);
 
-  const [total, fighter, typeCount] = await env.DB.batch([
+  const [total, typed, fighter, typeCount] = await env.DB.batch([
     bump(env.DB, 'total'),
+    bump(env.DB, 'typed'),
     bump(env.DB, `fighter:${slug}`),
     bump(env.DB, `type:${type}`),
   ]);
   const n = (r) => r?.results?.[0]?.n || 0;
-  return json({ enabled: true, total: n(total), fighter: n(fighter), type: n(typeCount) });
+  return json({ enabled: true, total: n(total), typed: n(typed), fighter: n(fighter), type: n(typeCount) });
 }
