@@ -2,15 +2,31 @@
 // Pure: no I/O, so the build script and tests share it.
 import { typeFromAxes, TYPE_CODES } from './types.js';
 import { slugify } from './share.js';
+import { STARS } from '../data/stars.js';
 
 export const ROSTER_RULES = {
   activeDays: 548, // ~18 months before the newest fight in the data
   minUfcFights: 4,
-  perDivision: 18,
+  perDivision: 12,
   // Thin types (e.g. counter-striking finishers) get topped up from the active
   // list so a few fighters don't collect every answer set of that type.
-  typeFloor: { men: 14, women: 6 },
+  typeFloor: { men: 10, women: 5 },
+  // Prominence floor for curated names, so matching leans toward them.
+  starProminence: { icon: 1, star: 0.75 },
+  minStarUfcFights: 3,
 };
+
+const MEN_BY_WEIGHT = [
+  [125, 'Flyweight'], [135, 'Bantamweight'], [145, 'Featherweight'], [155, 'Lightweight'],
+  [170, 'Welterweight'], [185, 'Middleweight'], [205, 'Light Heavyweight'], [Infinity, 'Heavyweight'],
+];
+
+// Legends often carry "Catch Weight" or no class from their last bout.
+function divisionOf(row) {
+  if (row.weight_class && row.weight_class !== 'Catch Weight') return row.weight_class;
+  if (!(row.weight_lbs > 0)) return null;
+  return MEN_BY_WEIGHT.find(([max]) => row.weight_lbs <= max)[1];
+}
 
 function percentileFn(values) {
   const sorted = [...values].sort((a, b) => a - b);
@@ -48,7 +64,11 @@ function ufcSummary(row) {
   return { fights: fights.length, wins: wins.length, losses, ko, sub, dec, fiveRound, lastFight };
 }
 
-export function buildRoster(rows, rules = ROSTER_RULES) {
+export function buildRoster(rows, rules = ROSTER_RULES, stars = STARS) {
+  const tierOf = new Map();
+  for (const name of stars.star) tierOf.set(name.toLowerCase(), 'star');
+  for (const name of stars.icon) tierOf.set(name.toLowerCase(), 'icon');
+
   const snapshot = rows.reduce(
     (m, r) => (r.fights || []).reduce((mm, f) => (f.date > mm ? f.date : mm), m),
     '',
@@ -57,17 +77,31 @@ export function buildRoster(rows, rules = ROSTER_RULES) {
     .toISOString()
     .slice(0, 10);
 
+  // `active` sets the stat scale and the type shares; `eligible` adds the
+  // curated stars and legends, who may not have fought in years.
   const active = [];
+  const eligible = [];
+  const foundStars = new Set();
   for (const row of rows) {
-    if (!row.name || !row.weight_class || row.weight_class === 'Catch Weight') continue;
-    if (!(row.slpm > 0)) continue;
+    if (!row.name || !(row.slpm > 0)) continue;
     const u = ufcSummary(row);
+    if (!u.fights) continue;
+    const tier = tierOf.get(row.name.toLowerCase()) || null;
+    const division = divisionOf(row);
+    if (!division) continue;
     // A current champion is always in: a new one can have only 3 UFC fights,
     // and a long title layoff can outlast the activity window.
-    const tooFew = u.fights < rules.minUfcFights || u.lastFight < cutoff;
-    if (!u.fights || (tooFew && !row.is_champion)) continue;
-    active.push({ row, u });
+    const current = (u.fights >= rules.minUfcFights && u.lastFight >= cutoff) || !!row.is_champion;
+    // Only fighters with a real division set the stat scale and the pool.
+    const isActive = current && row.weight_class === division;
+    const entry = { row, u, tier, division, isActive, current };
+    if (isActive) active.push(entry);
+    if (isActive || (tier && u.fights >= rules.minStarUfcFights)) {
+      eligible.push(entry);
+      if (tier) foundStars.add(row.name.toLowerCase());
+    }
   }
+  const missingStars = [...stars.icon, ...stars.star].filter((n) => !foundStars.has(n.toLowerCase()));
 
   const finishRate = ({ u }) => (u.ko + u.sub) / Math.max(u.wins, 1);
   const pct = {
@@ -80,7 +114,7 @@ export function buildRoster(rows, rules = ROSTER_RULES) {
     fin: percentileFn(active.map(finishRate)),
   };
 
-  for (const a of active) {
+  for (const a of eligible) {
     const r = a.row;
     const striking = 0.65 * pct.slpm(r.slpm) + 0.35 * pct.acc(r.str_acc);
     const grappling = 0.6 * pct.td(r.td_avg) + 0.4 * pct.sub(r.sub_avg);
@@ -104,7 +138,7 @@ export function buildRoster(rows, rules = ROSTER_RULES) {
     axes[k] = (v) => Math.max(-1, Math.min(1, ((v - m) / p90) * 0.8));
   }
 
-  for (const a of active) {
+  for (const a of eligible) {
     a.axes = {
       R: round3(axes.R(a.raw.R)),
       T: round3(axes.T(a.raw.T)),
@@ -121,24 +155,27 @@ export function buildRoster(rows, rules = ROSTER_RULES) {
   for (const a of active) typeShare[a.type] += 1;
   for (const c of TYPE_CODES) typeShare[c] = round3(typeShare[c] / Math.max(active.length, 1));
 
+  // Nobody wants to be told they fight like someone with a losing record, so
+  // uncurated fighters need more UFC wins than losses.
+  const winning = active.filter((a) => a.row.is_champion || a.u.wins > a.u.losses);
   const byDivision = new Map();
-  for (const a of active) {
-    if (!byDivision.has(a.row.weight_class)) byDivision.set(a.row.weight_class, []);
-    byDivision.get(a.row.weight_class).push(a);
+  for (const a of winning) {
+    if (!byDivision.has(a.division)) byDivision.set(a.division, []);
+    byDivision.get(a.division).push(a);
   }
   const picked = new Set();
   for (const list of byDivision.values()) {
     list.sort((x, y) => y.prominenceRaw - x.prominenceRaw || x.row.name.localeCompare(y.row.name));
     list.slice(0, rules.perDivision).forEach((a) => picked.add(a));
   }
-  for (const a of active) if (a.row.is_champion) picked.add(a);
-  const byProminence = [...active].sort(
+  for (const a of eligible) if (a.row.is_champion || a.tier) picked.add(a);
+  const byProminence = [...winning].sort(
     (x, y) => y.prominenceRaw - x.prominenceRaw || x.row.name.localeCompare(y.row.name),
   );
   for (const code of TYPE_CODES) {
     for (const women of [false, true]) {
       const floor = women ? rules.typeFloor.women : rules.typeFloor.men;
-      const isGroup = (a) => a.type === code && a.row.weight_class.startsWith("Women's") === women;
+      const isGroup = (a) => a.type === code && a.division.startsWith("Women's") === women;
       let have = [...picked].filter(isGroup).length;
       for (const a of byProminence) {
         if (have >= floor) break;
@@ -150,10 +187,15 @@ export function buildRoster(rows, rules = ROSTER_RULES) {
     }
   }
 
+  const maxProm = Math.max(1, ...active.map((a) => a.prominenceRaw));
+  for (const a of picked) {
+    const fromData = Math.min(1, a.prominenceRaw / maxProm);
+    const floor = a.row.is_champion ? 1 : a.tier ? rules.starProminence[a.tier] : 0;
+    a.prominence = Math.max(fromData, floor);
+  }
   const pool = [...picked].sort(
-    (x, y) => y.prominenceRaw - x.prominenceRaw || x.row.name.localeCompare(y.row.name),
+    (x, y) => y.prominence - x.prominence || x.row.name.localeCompare(y.row.name),
   );
-  const maxProm = pool[0]?.prominenceRaw || 1;
   const seen = new Map();
   const fighters = pool.map((a) => {
     const r = a.row;
@@ -165,9 +207,11 @@ export function buildRoster(rows, rules = ROSTER_RULES) {
       id: r.id,
       name: r.name,
       nickname: r.nickname || null,
-      division: r.weight_class,
-      women: r.weight_class.startsWith("Women's"),
+      division: a.division,
+      women: a.division.startsWith("Women's"),
       champion: !!r.is_champion,
+      tier: a.tier,
+      legend: !a.current,
       record: `${r.wins}-${r.losses}-${r.draws || 0}`,
       ufcWins: a.u.wins,
       ufcLosses: a.u.losses,
@@ -182,7 +226,7 @@ export function buildRoster(rows, rules = ROSTER_RULES) {
       subAvg: r.sub_avg,
       axes: a.axes,
       type: a.type,
-      prominence: round3(a.prominenceRaw / maxProm),
+      prominence: round3(a.prominence),
       lastFight: a.u.lastFight,
     };
   });
@@ -192,5 +236,6 @@ export function buildRoster(rows, rules = ROSTER_RULES) {
     activeCount: active.length,
     typeShare,
     fighters,
+    missingStars,
   };
 }

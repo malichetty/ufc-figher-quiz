@@ -4,7 +4,7 @@ import { typeFromAxes } from './types.js';
 
 const WEIGHTS = { R: 1, T: 0.8, F: 0.7, W: 0.4 };
 const SAME_TYPE_BONUS = 0.12;
-const PROMINENCE_WEIGHT = 0.05;
+const PROMINENCE_WEIGHT = 0.1;
 const TIE_WINDOW = 0.035;
 // Answer sums rarely reach the theoretical max, so stretch them to use the
 // same range as fighters' axes.

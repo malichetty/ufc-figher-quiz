@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import satori from 'satori';
 import { Resvg } from '@resvg/resvg-js';
 import { TYPES } from '../src/lib/types.js';
+import { statusOf } from '../src/lib/status.js';
 
 const root = new URL('..', import.meta.url);
 const OUT = new URL('dist/og/', root);
@@ -40,7 +41,7 @@ function stat(label, value) {
 
 function card(f) {
   const type = TYPES[f.type];
-  const meta = [f.division.toUpperCase(), f.record, f.champion ? 'CHAMPION' : null].filter(Boolean).join('  ·  ');
+  const meta = [f.division, f.record, statusOf(f)?.label].filter(Boolean).join('  ·  ').toUpperCase();
   return h(
     'div',
     {

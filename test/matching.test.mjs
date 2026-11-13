@@ -15,29 +15,52 @@ for (let i = 0; i < 4 ** QUESTIONS.length; i++) {
   allAnswers.push(QUESTIONS.map((_, k) => (i >> (2 * k)) & 3));
 }
 
+// Women's divisions have fewer names people know, so their bars are looser.
+const SPREAD = {
+  all: { cap: 0.08, distinct: 100, famous: 0.8 },
+  men: { cap: 0.08, distinct: 100, famous: 0.8 },
+  women: { cap: 0.12, distinct: 35, famous: 0.5 },
+};
+
 for (const division of ['all', 'men', 'women']) {
-  test(`US-001 result spread, division=${division}`, () => {
+  test(`US-001 result spread and fame, division=${division}`, () => {
     const counts = new Map();
     const types = new Set();
+    let famous = 0;
     for (const a of allAnswers) {
       const r = findMatch(roster, a, division);
       counts.set(r.fighter.slug, (counts.get(r.fighter.slug) || 0) + 1);
       types.add(r.type);
+      if (r.fighter.champion || r.fighter.tier) famous += 1;
       if (division === 'men') assert.equal(r.fighter.women, false, r.fighter.name);
       if (division === 'women') assert.equal(r.fighter.women, true, r.fighter.name);
     }
-    // The women's pool is ~60 fighters, so its cap is looser.
-    const cap = division === 'women' ? 0.1 : 0.08;
+    const bar = SPREAD[division];
     const [topSlug, topCount] = [...counts].sort((x, y) => y[1] - x[1])[0];
-    assert.ok(topCount / allAnswers.length <= cap, `${topSlug} gets ${topCount} of ${allAnswers.length}`);
-    assert.ok(counts.size >= (division === 'women' ? 40 : 60), `only ${counts.size} fighters reachable`);
+    assert.ok(topCount / allAnswers.length <= bar.cap, `${topSlug} gets ${topCount} of ${allAnswers.length}`);
+    assert.ok(counts.size >= bar.distinct, `only ${counts.size} fighters reachable`);
+    assert.ok(famous / allAnswers.length >= bar.famous, `only ${famous} famous results`);
     if (division !== 'women') assert.equal(types.size, TYPE_CODES.length);
   });
 }
 
-test('US-001 pool is current and includes every champion', () => {
+test('US-008 legends are in, and nobody uncurated has a losing UFC record', () => {
+  for (const slug of ['jon-jones', 'khabib-nurmagomedov', 'georges-st-pierre', 'ronda-rousey', 'amanda-nunes']) {
+    const f = roster.fighters.find((x) => x.slug === slug);
+    assert.ok(f, `${slug} missing`);
+    assert.equal(f.tier, 'icon');
+  }
+  for (const f of roster.fighters) {
+    if (!f.tier && !f.champion) assert.ok(f.ufcWins > f.ufcLosses, `${f.name} ${f.ufcWins}-${f.ufcLosses}`);
+  }
+});
+
+test('US-001 everyone not curated or a champion is current', () => {
   const cutoff = new Date(Date.parse(roster.snapshot) - 548 * 86400000).toISOString().slice(0, 10);
-  for (const f of roster.fighters) assert.ok(f.lastFight >= cutoff, `${f.name} last fought ${f.lastFight}`);
+  for (const f of roster.fighters) {
+    if (!f.tier && !f.champion) assert.ok(f.lastFight >= cutoff, `${f.name} last fought ${f.lastFight}`);
+    assert.equal(f.legend, f.lastFight < cutoff && !f.champion, `${f.name} legend flag`);
+  }
   assert.ok(roster.fighters.filter((f) => f.champion).length >= 8);
   assert.equal(new Set(roster.fighters.map((f) => f.slug)).size, roster.fighters.length);
 });

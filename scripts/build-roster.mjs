@@ -54,7 +54,8 @@ async function main() {
     console.warn(`[roster] fetch failed (${err.message}); keeping committed roster.json`);
     return;
   }
-  const roster = buildRoster(rows);
+  const { missingStars, ...roster } = buildRoster(rows);
+  if (missingStars.length) console.warn(`[roster] stars not found in the API: ${missingStars.join(', ')}`);
   if (roster.fighters.length < 100) {
     console.warn(`[roster] only ${roster.fighters.length} fighters; keeping committed roster.json`);
     return;

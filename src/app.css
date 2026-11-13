@@ -368,13 +368,41 @@ button {
   text-transform: uppercase;
   font-size: 14px;
 }
-.champ {
+.status {
   display: inline-block;
   margin-left: 10px;
-  background: var(--gold);
-  color: #000;
   padding: 1px 8px;
   font-size: 12px;
+}
+.status.champ {
+  background: var(--gold);
+  color: #000;
+}
+.status.legend {
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+}
+.status.past {
+  border: 1px solid #555;
+  color: var(--muted);
+}
+.social-proof {
+  margin-top: 22px;
+  color: var(--muted);
+  font-size: 15px;
+  letter-spacing: 0.5px;
+}
+.social-proof strong {
+  color: var(--gold);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.3em;
+  letter-spacing: 1px;
+}
+.small-proof {
+  margin-top: 8px;
+  font-size: 13px;
 }
 .type-row {
   display: flex;

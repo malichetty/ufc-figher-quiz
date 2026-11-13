@@ -5,6 +5,8 @@ import { AXES, TYPES } from './lib/types.js';
 import { findMatch, rank, scoreFighter, userAxes, whyYouMatch } from './lib/match.js';
 import { NAME_MAX, parseShareLocation, sanitizeName, sharePath, shareUrl } from './lib/share.js';
 import { saveResultImage } from './lib/card-image.js';
+import { fetchTally, prepareBotCheck, recordTally } from './lib/tally.js';
+import { statusOf } from './lib/status.js';
 
 const bySlug = new Map(roster.fighters.map((f) => [f.slug, f]));
 const API_DOCS = 'https://ufcapi.aristotle.me/docs';
@@ -80,6 +82,7 @@ export default function App() {
   const [name, setName] = useState(() => sanitizeName(store.get('ufcq:name')));
   const [division, setDivision] = useState(() => store.get('ufcq:division') || 'all');
   const [answers, setAnswers] = useState([]);
+  const [tally, setTally] = useState(null);
 
   useEffect(() => {
     if (init.stage === 'result' && !init.own) track('shared_view', { fighter: init.result.fighter.slug });
@@ -100,6 +103,13 @@ export default function App() {
     window.scrollTo(0, 0);
   }, [stage]);
 
+  // The counter: totals on the start screen, the fighter's count on a shared
+  // result. A finished quiz gets its numbers from the record call instead.
+  useEffect(() => {
+    if (stage === 'intro') fetchTally().then(setTally);
+    if (stage === 'result' && result && !own) fetchTally(result.fighter).then(setTally);
+  }, [stage, result, own]);
+
   useEffect(() => {
     if (stage === 'result' && result) {
       const who = own ? (result.name ? `${result.name} fights` : 'I fight') : `${result.name || 'Your friend'} fights`;
@@ -117,6 +127,7 @@ export default function App() {
     setAnswers([]);
     setNotice('');
     setStage('quiz');
+    prepareBotCheck();
     track('quiz_start', { division });
   };
 
@@ -127,7 +138,10 @@ export default function App() {
     const match = findMatch(roster, next, division);
     const r = { ...match, name: sanitizeName(name), answers: next, division };
     const path = sharePath({ slug: match.fighter.slug, name: r.name, answers: next, division });
+    const repeat = store.get('ufcq:last') === path;
     store.set('ufcq:last', path);
+    setTally(null);
+    (repeat ? fetchTally(match.fighter) : recordTally(match.fighter)).then(setTally);
     setResult(r);
     setOwn(true);
     setStage('reveal');
@@ -170,6 +184,7 @@ export default function App() {
             onStart={start}
             notice={notice}
             challenger={challenger}
+            tally={tally}
           />
         )}
         {stage === 'quiz' && (
@@ -181,6 +196,7 @@ export default function App() {
             result={result}
             own={own}
             challenger={challenger}
+            tally={tally}
             onRetake={retake}
             onChallenge={takeChallenge}
           />
@@ -202,7 +218,7 @@ function formatDate(iso) {
   });
 }
 
-function Intro({ name, setName, division, setDivision, onStart, notice, challenger }) {
+function Intro({ name, setName, division, setDivision, onStart, notice, challenger, tally }) {
   return (
     <section className="intro fade-in">
       {notice && <p className="notice">{notice}</p>}
@@ -216,8 +232,8 @@ function Intro({ name, setName, division, setDivision, onStart, notice, challeng
         Which UFC fighter <span>are you?</span>
       </h1>
       <p className="lede">
-        We match your fighting style against {roster.fighters.length} active UFC fighters, champions included,
-        using their real fight stats.
+        We match your fighting style against {roster.fighters.length} UFC fighters, from today's champions to the
+        legends, using their real fight stats.
       </p>
       <form
         className="start-form"
@@ -260,6 +276,11 @@ function Intro({ name, setName, division, setDivision, onStart, notice, challeng
           Find my fighter
         </button>
       </form>
+      {tally?.total > 0 && (
+        <p className="social-proof">
+          <strong>{tally.total.toLocaleString()}</strong> people have found their fighter
+        </p>
+      )}
     </section>
   );
 }
@@ -339,7 +360,7 @@ function AxisBars({ you, them, themLabel, youLabel = 'You' }) {
   );
 }
 
-function Result({ result, own, challenger, onRetake, onChallenge }) {
+function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
   const { fighter, type, name, axes, matchPct, runnersUp, answers, division } = result;
   const t = TYPES[type];
   const share = useMemo(
@@ -348,6 +369,8 @@ function Result({ result, own, challenger, onRetake, onChallenge }) {
   );
   const reasons = axes ? whyYouMatch(fighter, axes) : null;
   const rarity = Math.round((roster.typeShare[type] || 0) * 100);
+  const status = statusOf(fighter);
+  const counted = tally?.total > 0 && tally.fighter > 0;
   const heading = own
     ? name
       ? `${name}, you fight like`
@@ -363,7 +386,7 @@ function Result({ result, own, challenger, onRetake, onChallenge }) {
         <h1 className="fighter-name">{fighter.name}</h1>
         <p className="fighter-meta">
           {fighter.division} · {fighter.record}
-          {fighter.champion && <span className="champ">Champion</span>}
+          {status && <span className={`status ${status.className}`}>{status.label}</span>}
         </p>
         <div className="type-row">
           <span className="type-badge">{t.name}</span>
@@ -373,6 +396,24 @@ function Result({ result, own, challenger, onRetake, onChallenge }) {
         <p className="rarity">
           Only {rarity}% of active UFC fighters are {typePlural(type)}.
         </p>
+        {counted && (
+          <p className="social-proof small-proof">
+            {own && tally.fighter === 1 ? (
+              <>You're the first person to get {lastName(fighter.name)}.</>
+            ) : own ? (
+              <>
+                You're one of <strong>{tally.fighter.toLocaleString()}</strong> people who got{' '}
+                {lastName(fighter.name)}.
+              </>
+            ) : (
+              <>
+                <strong>{tally.fighter.toLocaleString()}</strong> {tally.fighter === 1 ? 'person has' : 'people have'}{' '}
+                gotten {lastName(fighter.name)}.
+              </>
+            )}{' '}
+            {Math.round((tally.type / tally.total) * 100)}% of quiz takers are {typePlural(type)}.
+          </p>
+        )}
 
         <div className="stats">
           <Stat label="Strikes / min" value={fighter.slpm.toFixed(2)} />
@@ -432,6 +473,8 @@ function Result({ result, own, challenger, onRetake, onChallenge }) {
                   <strong>{r.fighter.name}</strong>
                   <span>
                     {TYPES[r.fighter.type].name} · {r.fighter.division}
+                    {r.fighter.legend && r.fighter.tier === 'icon' ? ' · Legend' : ''}
+                    {r.fighter.champion ? ' · Champion' : ''}
                   </span>
                 </div>
               </div>

@@ -1,3 +1,5 @@
+import { statusOf } from './status.js';
+
 // Draws a 1080x1350 result card in the browser (Canvas, no library) so the
 // person's name can appear on an image without any server rendering.
 const W = 1080;
@@ -75,7 +77,7 @@ export async function drawResultCard({ fighter, name, matchPct }, type) {
 
   ctx.fillStyle = '#bdbdbd';
   ctx.font = `500 34px ${OSWALD}`;
-  const meta = [fighter.division, fighter.record, fighter.champion ? 'Champion' : null].filter(Boolean).join('  ·  ');
+  const meta = [fighter.division, fighter.record, statusOf(fighter)?.label].filter(Boolean).join('  ·  ');
   ctx.fillText(meta.toUpperCase(), W / 2, 530);
 
   // Type badge
