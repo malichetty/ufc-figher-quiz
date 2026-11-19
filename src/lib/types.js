@@ -38,12 +38,6 @@ export const TYPES = {
 
 export const TYPE_CODES = Object.keys(TYPES);
 
-export const AXES = [
-  { key: 'R', plus: 'Striker', minus: 'Grappler' },
-  { key: 'T', plus: 'Pressure', minus: 'Counter' },
-  { key: 'F', plus: 'Finisher', minus: 'Decision' },
-];
-
 // A grappler who finishes is named by how they finish (W: knockout + or
 // submission −), not by pace: ground-and-pound is The Mauler, chokes are The
 // Submission Artist. With no lean either way, pace decides as for everyone else.

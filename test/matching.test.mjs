@@ -135,9 +135,9 @@ test('the You vs Friend sentence is true for the pair (seen: two grapplers told 
   const hughes = pair([1, 1, 1, 0, 0, 0], '101001');
   const chandler = pair([0, 0, 0, 0, 0, 1], '010000');
   const cormier = pair([3, 0, 1, 3, 1, 0], '212221');
-  assert.doesNotMatch(hughes, /your friend is the/);
-  assert.doesNotMatch(chandler, /your friend is the/);
-  assert.doesNotMatch(cormier, /almost the same way/);
+  assert.equal(hughes, "Biggest difference: you're more of a striker than your friend.");
+  assert.equal(chandler, "Biggest difference: you're more of a grappler than your friend.");
+  assert.equal(cormier, "Biggest difference: you're more of a knockout hunter than your friend.");
 });
 
 test('US-003 share URLs round-trip, and old links still parse', () => {
