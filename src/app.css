@@ -364,7 +364,7 @@ button {
 .versus-row {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  align-items: center;
+  align-items: start;
   gap: var(--s3);
 }
 .versus-row div {
@@ -391,6 +391,7 @@ button {
   font-family: var(--display);
   font-size: calc(32 * var(--t));
   color: var(--red);
+  align-self: center;
 }
 .vs-verdict {
   margin-top: var(--s4);
