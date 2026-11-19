@@ -158,8 +158,11 @@ button {
   color: var(--gold);
 }
 .start-btn {
-  max-width: 560px;
-  margin: 0 auto;
+  display: inline-block;
+  width: 290px;
+  max-width: 100%;
+  font-size: 22px;
+  padding: 20px 18px;
 }
 
 /* Quiz */

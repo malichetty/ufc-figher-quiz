@@ -205,12 +205,12 @@ function Intro({ onStart, notice, challenger, tally }) {
       <h1 className="title">
         Which UFC fighter <span>are you?</span>
       </h1>
-      <button className="btn btn-primary btn-big start-btn" onClick={onStart}>
+      <button className="btn btn-primary start-btn" onClick={onStart}>
         Find my fighter
       </button>
       {tally?.total > 0 && (
         <p className="social-proof">
-          <strong>{tally.total.toLocaleString()}</strong> people matched
+          🔥 <strong>{tally.total.toLocaleString()}</strong> people matched
         </p>
       )}
     </section>
