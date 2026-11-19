@@ -84,7 +84,7 @@ async function readCounts(db, keys) {
   return keys.map((k) => map[k] || 0);
 }
 
-// GET /api/tally?f=<slug>&t=<type>: totals for the intro and result pages.
+// GET /api/tally?f=<slug>&t=<type>: the total for the start screen (the app sends no f or t today).
 export async function handleGet({ env, url, isKnown }) {
   if (!enabled(env)) return json({ enabled: false });
   const slug = url.searchParams.get('f');
