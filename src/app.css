@@ -573,9 +573,6 @@ button {
   .versus-row strong {
     font-size: 1.2rem;
   }
-  .vs {
-    font-size: 1.5rem;
-  }
   .vs-verdict {
     margin: 2px 0 6px;
   }
@@ -585,7 +582,7 @@ button {
   }
 }
 
-@media (max-width: 720px) and (max-height: 600px) {
+@media (max-width: 720px) and (max-height: 640px) {
   .content:has(> .result) {
     padding-top: 8px;
   }
