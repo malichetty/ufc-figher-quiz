@@ -7,6 +7,7 @@ import { QUESTIONS } from '../src/lib/questions.js';
 import { TYPE_CODES } from '../src/lib/types.js';
 import { parseShareLocation, sharePath } from '../src/lib/share.js';
 import { buildRoster } from '../src/lib/roster.js';
+import { verdict } from '../src/lib/versus.js';
 
 const roster = JSON.parse(readFileSync(new URL('../src/data/roster.json', import.meta.url), 'utf8'));
 
@@ -127,6 +128,16 @@ test('a pure wrestler gets a known grappler, a pure knockout striker a known str
   assert.ok(known(wrestler) && wrestler.type[0] === 'G', `${wrestler.name} ${wrestler.type}`);
   const striker = findMatch(roster, [0, 0, 0, 1, 0, 0]).fighter;
   assert.ok(known(striker) && striker.type[0] === 'S', `${striker.name} ${striker.type}`);
+});
+
+test('the You vs Friend sentence is true for the pair (seen: two grapplers told "you\'re the striker"; W ignored)', () => {
+  const pair = (you, friend) => verdict(findMatch(roster, you).axes, findMatch(roster, [...friend].map(Number)).axes);
+  const hughes = pair([1, 1, 1, 0, 0, 0], '101001');
+  const chandler = pair([0, 0, 0, 0, 0, 1], '010000');
+  const cormier = pair([3, 0, 1, 3, 1, 0], '212221');
+  assert.doesNotMatch(hughes, /your friend is the/);
+  assert.doesNotMatch(chandler, /your friend is the/);
+  assert.doesNotMatch(cormier, /almost the same way/);
 });
 
 test('US-003 share URLs round-trip, and old links still parse', () => {
