@@ -33,7 +33,6 @@ const track = (event, params) => {
 };
 
 const lastName = (name) => name.replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/i, '').split(' ').slice(-1)[0];
-const possessive = (word) => (word === 'Their' ? word : `${word}'s`);
 
 // Everything the result screen shows, rebuilt from a share URL or a finished quiz.
 function buildResult({ slug, name, answers, division }) {
@@ -336,58 +335,6 @@ function Reveal() {
   );
 }
 
-// `who` is either a name (third person) or the pronoun the caller chose.
-function lean(who, plural, v, axis) {
-  if (Math.abs(v) < 0.25) return `${who} ${plural ? 'are' : 'is'} near the middle`;
-  return `${who} ${plural ? 'lean' : 'leans'} ${(v > 0 ? axis.plus : axis.minus).toLowerCase()}`;
-}
-
-function AxisBars({ you, them, themLabel, youLabel = 'You', youPronoun = youLabel === 'You' ? 'You' : null }) {
-  return (
-    <div className="axes">
-      {AXES.map((a) => (
-        <div className="axis" key={a.key}>
-          <div className="axis-labels">
-            <span>{a.minus}</span>
-            <span>{a.plus}</span>
-          </div>
-          <p className="sr-only">
-            {[
-              you && lean(youPronoun || youLabel, Boolean(youPronoun), you[a.key], a),
-              them && lean(themLabel, false, them[a.key], a),
-            ]
-              .filter(Boolean)
-              .join('; ')}
-            .
-          </p>
-          <div className="axis-track" aria-hidden="true">
-            {them && (
-              <span
-                className="dot them"
-                style={{ left: `${((them[a.key] + 1) / 2) * 100}%` }}
-                title={themLabel}
-              />
-            )}
-            {you && <span className="dot you" style={{ left: `${((you[a.key] + 1) / 2) * 100}%` }} title={youLabel} />}
-          </div>
-        </div>
-      ))}
-      <div className="axis-legend" aria-hidden="true">
-        {you && (
-          <span>
-            <i className="dot you" /> {youLabel}
-          </span>
-        )}
-        {them && (
-          <span>
-            <i className="dot them" /> {themLabel}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
   const { fighter, type, name, axes, matchPct, runnersUp, answers, division } = result;
   const t = TYPES[type];
@@ -409,15 +356,6 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
   useEffect(() => {
     nameRef.current?.focus();
   }, [fighter.slug]);
-  // The sticky "Find my fighter" bar appears once the inline one scrolls away.
-  const ctaRef = useRef(null);
-  const [ctaInView, setCtaInView] = useState(true);
-  useEffect(() => {
-    if (own || !ctaRef.current || typeof IntersectionObserver !== 'function') return undefined;
-    const io = new IntersectionObserver(([e]) => setCtaInView(e.isIntersecting));
-    io.observe(ctaRef.current);
-    return () => io.disconnect();
-  }, [own]);
 
   return (
     <section className={`result fade-in ${own ? 'is-own' : 'is-friend'}`}>
@@ -436,54 +374,50 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
           <span className="type-badge">{t.name}</span>
           {matchPct != null && <span className="match-pct">{matchPct}% match</span>}
         </div>
+        <p className="type-desc">{t.tagline}</p>
 
-        {/* The next action sits right under the result on phones (desktop
-            keeps the sidebar). */}
-        {own ? (
-          <div className="inline-cta phone-only">
-            <QuickShare result={result} url={share} />
-          </div>
-        ) : (
-          <div className="inline-cta phone-only" ref={ctaRef}>
-            <button className="btn btn-primary btn-big" onClick={onChallenge}>
-              Find my fighter
-            </button>
-          </div>
-        )}
+        <div className="stats">
+          <Stat label="Strikes/min" value={fighter.slpm.toFixed(1)} />
+          <Stat label="Accuracy" value={`${Math.round(fighter.strAcc * 100)}%`} />
+          <Stat label="TDs/15 min" value={fighter.tdAvg.toFixed(1)} />
+          <Stat label="Finishes" value={fighter.koWins + fighter.subWins} />
+        </div>
 
         {versus && (
           <div className="versus">
-            <h3>You vs {challenger.name || 'your friend'}</h3>
             <div className="versus-row">
               <div>
                 <span className="vs-label">You</span>
                 <strong>{fighter.name}</strong>
-                <span>{t.name}</span>
               </div>
               <span className="vs">VS</span>
               <div>
                 <span className="vs-label">{challenger.name || 'Friend'}</span>
                 <strong>{challenger.fighter.name}</strong>
-                <span>{TYPES[challenger.type].name}</span>
               </div>
             </div>
             <p className="vs-verdict">{verdict(axes, challenger.axes, challenger.name)}</p>
-            <AxisBars you={axes} them={challenger.axes} themLabel={challenger.name || 'Friend'} />
           </div>
         )}
 
-        <p className="type-desc">{t.tagline}</p>
-        {counted && (
-          <p className="social-proof small-proof">
-            {own && tally.fighter === 1 ? (
-              <>First to get {surname}</>
-            ) : (
-              <>
-                <strong>{tally.fighter.toLocaleString()}</strong> got {surname}
-              </>
-            )}
-          </p>
-        )}
+        <div className="card-foot">
+          {runnersUp?.length > 0 && (
+            <p className="also">
+              {own ? 'Also' : 'Also close'}: {runnersUp.map((r) => r.fighter.name).join(' · ')}
+            </p>
+          )}
+          {counted && (
+            <p className="also">
+              {own && tally.fighter === 1 ? (
+                <>First to get {surname}</>
+              ) : (
+                <>
+                  <strong>{tally.fighter.toLocaleString()}</strong> got {surname}
+                </>
+              )}
+            </p>
+          )}
+        </div>
 
         {reasons.length > 0 && (
           <details className="why">
@@ -497,64 +431,22 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
             </ul>
           </details>
         )}
-
-        <div className="stats">
-          <Stat label="Strikes / min" value={fighter.slpm.toFixed(2)} />
-          <Stat label="Strike accuracy" value={`${Math.round(fighter.strAcc * 100)}%`} />
-          <Stat label="Takedowns / 15" value={fighter.tdAvg.toFixed(2)} />
-          <Stat label="UFC finishes" value={fighter.koWins + fighter.subWins} />
-        </div>
-
-        <div className="style-block">
-          <h3>{axes ? (own ? 'Your style' : `${possessive(name || 'Their')} style`) : `${possessive(surname)} style`}</h3>
-          <AxisBars
-            you={axes}
-            youLabel={own ? 'You' : name || 'Them'}
-            youPronoun={own ? 'You' : name ? null : 'They'}
-            them={fighter.axes}
-            themLabel={surname}
-          />
-        </div>
-
-        {runnersUp?.length > 0 && (
-          <div className="runners">
-            <h3>{own ? 'You also fight like' : 'Also close'}</h3>
-            {runnersUp.map((r) => (
-              <div className="runner" key={r.fighter.slug}>
-                <div>
-                  <strong>{r.fighter.name}</strong>
-                  <span>{TYPES[r.fighter.type].name}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </article>
 
       <aside className="actions">
         {own ? (
-          <ShareActions result={result} url={share} />
-        ) : (
           <>
-            <button className="btn btn-primary btn-big" onClick={onChallenge}>
-              Find my fighter
+            <ShareActions result={result} url={share} />
+            <button className="link-btn" onClick={onRetake}>
+              ↺ Take it again
             </button>
           </>
-        )}
-        {own && (
-          <button className="link-btn" onClick={onRetake}>
-            ↺ Take it again
+        ) : (
+          <button className="btn btn-primary btn-big" onClick={onChallenge}>
+            Find my fighter
           </button>
         )}
       </aside>
-
-      {!own && !ctaInView && (
-        <div className="sticky-cta phone-only">
-          <button className="btn btn-primary" onClick={onChallenge}>
-            Find my fighter
-          </button>
-        </div>
-      )}
     </section>
   );
 }
@@ -584,38 +476,6 @@ function Stat({ label, value }) {
       <strong>{value}</strong>
       <span>{label}</span>
     </div>
-  );
-}
-
-// One button under the result on phones: the share sheet where there is one,
-// otherwise copy the link.
-function QuickShare({ result, url }) {
-  const [copied, setCopied] = useState(false);
-  const { fighter, name } = result;
-  const text = `${name ? `${name} fights` : 'I fight'} like ${fighter.name}. Which UFC fighter are you?`;
-  const go = async () => {
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ title: 'Which UFC Fighter Are You?', text, url });
-        track('share', { method: 'native_inline', fighter: fighter.slug });
-      } catch {
-        /* dismissed */
-      }
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      window.prompt('Copy your link:', url);
-    }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
-    track('share', { method: 'copy_inline', fighter: fighter.slug });
-  };
-  return (
-    <button className="btn btn-primary btn-big" onClick={go}>
-      {copied ? 'Link copied' : 'Share my result'}
-    </button>
   );
 }
 
@@ -661,20 +521,22 @@ function ShareActions({ result, url }) {
 
   return (
     <>
-      {canNativeShare && (
-        <button className="btn btn-primary" onClick={nativeShare}>
-          Share my result
+      <button className="btn btn-primary btn-big" onClick={canNativeShare ? nativeShare : copy}>
+        {canNativeShare ? 'Share my result' : copied ? 'Link copied' : 'Copy my link'}
+      </button>
+      <div className="share-row">
+        {canNativeShare && (
+          <button className="btn btn-outline" onClick={copy}>
+            {copied ? 'Copied' : 'Copy link'}
+          </button>
+        )}
+        <button className="btn btn-outline" onClick={postX}>
+          Post on X
         </button>
-      )}
-      <button className={canNativeShare ? 'btn btn-outline' : 'btn btn-primary'} onClick={copy}>
-        {copied ? 'Link copied' : 'Copy my link'}
-      </button>
-      <button className="btn btn-outline" onClick={postX}>
-        Post on X
-      </button>
-      <button className="btn btn-outline" onClick={save} disabled={saving}>
-        {saving ? 'Drawing…' : 'Save image'}
-      </button>
+        <button className="btn btn-outline" onClick={save} disabled={saving}>
+          {saving ? 'Drawing…' : 'Save image'}
+        </button>
+      </div>
     </>
   );
 }

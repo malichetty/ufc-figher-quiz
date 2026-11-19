@@ -331,7 +331,7 @@ button {
 }
 .card-bar {
   height: 4px;
-  margin: 0 -24px 22px;
+  margin: 0 -24px 18px;
   background: linear-gradient(90deg, var(--gold), #f4d03f, var(--gold));
 }
 .card-kicker {
@@ -339,7 +339,7 @@ button {
   font-size: 13px;
   letter-spacing: 5px;
   text-transform: uppercase;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 .nickname {
   font-family: var(--display);
@@ -393,17 +393,13 @@ button {
   font-size: 1.3em;
   letter-spacing: 1px;
 }
-.small-proof {
-  margin-top: 8px;
-  font-size: 13px;
-}
 .type-row {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  margin: 20px 0 12px;
+  margin: 16px 0 10px;
 }
 .type-badge {
   background: var(--red);
@@ -428,8 +424,8 @@ button {
 .stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin: 22px 0;
+  gap: 6px;
+  margin: 18px 0 14px;
 }
 .stat {
   background: rgba(255, 255, 255, 0.04);
@@ -442,11 +438,11 @@ button {
 .stat strong {
   font-family: var(--display);
   font-weight: 400;
-  font-size: 1.7rem;
+  font-size: 1.5rem;
 }
 .stat span {
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: 10px;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
@@ -459,13 +455,13 @@ button {
   margin-bottom: 12px;
 }
 .why,
-.style-block,
-.versus,
-.runners {
+.versus {
   text-align: left;
   border-top: 1px solid var(--line);
-  padding-top: 18px;
-  margin-top: 18px;
+}
+.versus {
+  padding-top: 14px;
+  margin-bottom: 14px;
 }
 .why summary {
   cursor: pointer;
@@ -493,76 +489,12 @@ button {
   line-height: 1.45;
   color: #e5e5e5;
 }
-.axes {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.axis-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 6px;
-}
-.axis-track {
-  position: relative;
-  height: 6px;
-  background: linear-gradient(90deg, #2a2a2a, #3a3a3a 50%, #2a2a2a);
-}
-.axis-track::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: -3px;
-  bottom: -3px;
-  width: 1px;
-  background: #555;
-}
-.dot {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid #0a0a0a;
-}
-.axis-track .dot {
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1;
-}
-.dot.you {
-  background: var(--gold);
-}
-.dot.them {
-  background: transparent;
-  border: 3px solid var(--red);
-  width: 20px;
-  height: 20px;
-}
-.axis-track .dot.you {
-  z-index: 2;
-}
-.axis-legend {
-  display: flex;
-  gap: 18px;
-  font-size: 13px;
-  color: var(--muted);
-}
-.axis-legend span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
 .versus-row {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   text-align: center;
 }
 .versus-row div {
@@ -593,26 +525,6 @@ button {
   margin: 4px 0 16px;
   color: #e5e5e5;
 }
-.versus + .type-desc {
-  margin-top: 20px;
-}
-.runner {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 10px 14px;
-  margin-bottom: 8px;
-}
-.runner div {
-  display: flex;
-  flex-direction: column;
-}
-.runner span {
-  font-size: 12px;
-  color: var(--muted);
-}
 .actions {
   flex: 0 1 260px;
   display: flex;
@@ -633,22 +545,34 @@ button {
 [tabindex='-1']:focus {
   outline: none;
 }
-.phone-only {
-  display: none;
-}
-.inline-cta {
-  margin: 18px 0 4px;
+.card-foot {
+  display: flex;
   flex-direction: column;
+  gap: 4px;
+}
+.also {
+  color: var(--muted);
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+.also strong {
+  color: var(--gold);
+  font-weight: 500;
+}
+.why {
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.share-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 8px;
 }
-.sticky-cta {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 5;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, rgba(10, 10, 10, 0), rgba(10, 10, 10, 0.95) 35%);
+.share-row .btn {
+  padding: 10px 6px;
+  font-size: 13px;
+  letter-spacing: 1px;
 }
 .why-answer {
   display: block;
@@ -693,33 +617,18 @@ button {
 }
 
 @media (max-width: 720px) {
-  .inline-cta.phone-only {
-    display: flex;
-  }
-  .sticky-cta.phone-only {
-    display: block;
-  }
-  .result.is-friend {
-    padding-bottom: 80px;
-  }
-  .result.is-friend .actions {
-    display: none;
-  }
-  .inline-cta {
-    margin-bottom: 18px;
-  }
   .content {
     align-items: flex-start;
-    padding-top: 28px;
+    padding-top: 16px;
+  }
+  .result {
+    gap: 14px;
   }
   .card {
     padding: 0 16px 20px;
   }
   .card-bar {
     margin: 0 -16px 20px;
-  }
-  .stats {
-    grid-template-columns: repeat(2, 1fr);
   }
   .actions {
     flex-basis: 100%;
