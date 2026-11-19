@@ -205,7 +205,7 @@ function Intro({ onStart, notice, challenger, tally }) {
       <h1 className="title">
         Which UFC fighter <span>are you?</span>
       </h1>
-      <button className="btn btn-primary start-btn" onClick={onStart}>
+      <button className="btn start-btn" onClick={onStart}>
         Find my fighter
       </button>
       {tally?.total > 0 && (
@@ -282,7 +282,12 @@ function Result({ result, own, challenger, onRetake, onChallenge }) {
         <div className="card-bar" />
         <p className="card-kicker">{heading}</p>
         {fighter.nickname && <p className="nickname">“{fighter.nickname}”</p>}
-        <h1 className="fighter-name" ref={nameRef} tabIndex={-1}>
+        <h1
+          className="fighter-name"
+          ref={nameRef}
+          tabIndex={-1}
+          style={{ '--letters': Math.max(...fighter.name.split(' ').map((w) => w.length)) }}
+        >
           {fighter.name}
         </h1>
         <p className="fighter-meta">
@@ -322,7 +327,7 @@ function Result({ result, own, challenger, onRetake, onChallenge }) {
             </button>
           </>
         ) : (
-          <button className="btn btn-primary btn-big" onClick={onChallenge}>
+          <button className="btn" onClick={onChallenge}>
             Find my fighter
           </button>
         )}
@@ -373,7 +378,7 @@ function ShareActions({ result, url }) {
 
   return (
     <>
-      <button className="btn btn-primary btn-big" onClick={canNativeShare ? nativeShare : copy}>
+      <button className="btn" onClick={canNativeShare ? nativeShare : copy}>
         {canNativeShare ? 'Share my result' : copied ? 'Link copied' : 'Copy my link'}
       </button>
       <div className="share-links">
