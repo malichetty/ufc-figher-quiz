@@ -3,7 +3,7 @@ import roster from './data/roster.json';
 import { QUESTIONS } from './lib/questions.js';
 import { TYPES } from './lib/types.js';
 import { verdict } from './lib/versus.js';
-import { findMatch, rank, scoreFighter, userAxes } from './lib/match.js';
+import { findMatch, scoreFighter, userAxes } from './lib/match.js';
 import { parseShareLocation, sharePath, shareUrl } from './lib/share.js';
 import { saveResultImage } from './lib/card-image.js';
 import { fetchTally, prepareBotCheck, recordTally } from './lib/tally.js';
@@ -33,8 +33,6 @@ const track = (event, params) => {
   if (typeof window.gtag === 'function') window.gtag('event', event, params);
 };
 
-const lastName = (name) => name.replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/i, '').split(' ').slice(-1)[0];
-
 // Everything the result screen shows, rebuilt from a share URL or a finished quiz.
 function buildResult({ slug, answers }) {
   const fighter = bySlug.get(slug);
@@ -46,16 +44,7 @@ function buildResult({ slug, answers }) {
   // The roster moved on since the link was made: keep the linked fighter and
   // score them against the saved answers.
   const axes = userAxes(answers);
-  const { ranked } = rank(roster, answers);
-  return {
-    ...base,
-    axes,
-    matchPct: scoreFighter(axes, fighter.type, fighter).matchPct,
-    runnersUp: ranked
-      .filter((r) => r.fighter.slug !== slug)
-      .slice(0, 2)
-      .map((r) => ({ fighter: r.fighter, matchPct: r.matchPct })),
-  };
+  return { ...base, axes, matchPct: scoreFighter(axes, fighter.type, fighter).matchPct };
 }
 
 function initialState() {
@@ -80,9 +69,9 @@ export default function App() {
   const [challenger, setChallenger] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [tally, setTally] = useState(null);
-  // The result whose counts came from the record call; a cached read must not
-  // overwrite those fresher numbers.
-  const fresh = useRef(null);
+  // The result being revealed; cleared when the person navigates away so the
+  // reveal timer does not push a stale result.
+  const revealing = useRef(null);
 
   useEffect(() => {
     if (init.stage === 'result' && !init.own) track('shared_view', { fighter: init.result.fighter.slug });
@@ -90,7 +79,7 @@ export default function App() {
 
   useEffect(() => {
     const onPop = () => {
-      fresh.current = null;
+      revealing.current = null;
       const s = initialState();
       setStage(s.stage);
       setResult(s.result || null);
@@ -104,17 +93,14 @@ export default function App() {
     window.scrollTo(0, 0);
   }, [stage]);
 
-  // The counter: totals on the start screen, the fighter's count on any
-  // result page. A quiz just finished gets its numbers from the record call.
   useEffect(() => {
+    if (stage !== 'intro') return;
     let live = true;
-    const show = (t) => live && setTally(t);
-    if (stage === 'intro') fetchTally().then(show);
-    if (stage === 'result' && result && fresh.current !== result) fetchTally(result.fighter).then(show);
+    fetchTally().then((t) => live && setTally(t));
     return () => {
       live = false;
     };
-  }, [stage, result]);
+  }, [stage]);
 
   useEffect(() => {
     if (stage === 'result' && result) {
@@ -141,24 +127,19 @@ export default function App() {
     const r = { ...match, answers: next };
     const path = sharePath({ slug: match.fighter.slug, answers: next });
     store.set('ufcq:last', path);
-    setTally(null);
-    fresh.current = r;
-    // A retake with the same answers reads the counts instead of counting
-    // twice; only a count that went through is remembered.
-    // Only show counts that belong to the result still on screen.
-    const show = (t) => fresh.current === r && setTally(t);
-    if (store.get('ufcq:counted') === path) fetchTally(match.fighter).then(show);
-    else
+    revealing.current = r;
+    // A retake with the same answers is not counted twice; only a count that
+    // went through is remembered.
+    if (store.get('ufcq:counted') !== path)
       recordTally(match.fighter).then((t) => {
         if (t) store.set('ufcq:counted', path);
-        show(t);
       });
     setResult(r);
     setOwn(true);
     setStage('reveal');
     track('quiz_complete', { type: match.type, fighter: match.fighter.slug });
     window.setTimeout(() => {
-      if (fresh.current !== r) return; // the person navigated away during the reveal
+      if (revealing.current !== r) return;
       window.history.pushState({}, '', path);
       setStage('result');
     }, 1400);
@@ -170,7 +151,6 @@ export default function App() {
   };
 
   const takeChallenge = () => {
-    fresh.current = null;
     if (result && !own) setChallenger(result);
     window.history.pushState({}, '', '/');
     setResult(null);
@@ -178,7 +158,6 @@ export default function App() {
   };
 
   const retake = () => {
-    fresh.current = null;
     window.history.pushState({}, '', '/');
     setResult(null);
     setChallenger(null);
@@ -201,7 +180,6 @@ export default function App() {
             result={result}
             own={own}
             challenger={challenger}
-            tally={tally}
             onRetake={retake}
             onChallenge={takeChallenge}
           />
@@ -283,16 +261,14 @@ function Reveal() {
   );
 }
 
-function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
-  const { fighter, type, axes, matchPct, runnersUp, answers } = result;
+function Result({ result, own, challenger, onRetake, onChallenge }) {
+  const { fighter, type, axes, matchPct, answers } = result;
   const t = TYPES[type];
   const share = useMemo(
     () => (own ? shareUrl({ slug: fighter.slug, answers }) : null),
     [own, fighter.slug, answers],
   );
   const status = statusOf(fighter);
-  const counted = tally?.total > 0 && tally.fighter > 0;
-  const surname = lastName(fighter.name);
   const versus = challenger && own && challenger.axes && axes;
   const heading = own ? 'You fight like' : 'Your friend fights like';
   const nameRef = useRef(null);
@@ -319,13 +295,6 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
         </div>
         <p className="type-desc">{t.tagline}</p>
 
-        <div className="stats">
-          <Stat label="Strikes/min" value={fighter.slpm.toFixed(1)} />
-          <Stat label="Accuracy" value={`${Math.round(fighter.strAcc * 100)}%`} />
-          <Stat label="TDs/15 min" value={fighter.tdAvg.toFixed(1)} />
-          <Stat label="Finishes" value={fighter.koWins + fighter.subWins} />
-        </div>
-
         {versus && (
           <div className="versus">
             <div className="versus-row">
@@ -342,26 +311,6 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
             <p className="vs-verdict">{verdict(axes, challenger.axes)}</p>
           </div>
         )}
-
-        <div className="card-foot">
-          {runnersUp?.length > 0 && (
-            <p className="also">
-              {own ? 'Also' : 'Also close'}: {runnersUp.map((r) => r.fighter.name).join(' · ')}
-            </p>
-          )}
-          {counted && (
-            <p className="also">
-              {own && tally.fighter === 1 ? (
-                <>First to get {surname}</>
-              ) : (
-                <>
-                  <strong>{tally.fighter.toLocaleString()}</strong> got {surname}
-                </>
-              )}
-            </p>
-          )}
-        </div>
-
       </article>
 
       <aside className="actions">
@@ -379,15 +328,6 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
         )}
       </aside>
     </section>
-  );
-}
-
-function Stat({ label, value }) {
-  return (
-    <div className="stat">
-      <strong>{value}</strong>
-      <span>{label}</span>
-    </div>
   );
 }
 
@@ -436,16 +376,20 @@ function ShareActions({ result, url }) {
       <button className="btn btn-primary btn-big" onClick={canNativeShare ? nativeShare : copy}>
         {canNativeShare ? 'Share my result' : copied ? 'Link copied' : 'Copy my link'}
       </button>
-      <div className="share-row">
+      <div className="share-links">
         {canNativeShare && (
-          <button className="btn btn-outline" onClick={copy}>
-            {copied ? 'Copied' : 'Copy link'}
-          </button>
+          <>
+            <button className="link-btn" onClick={copy}>
+              {copied ? 'Copied' : 'Copy link'}
+            </button>
+            <span aria-hidden="true">·</span>
+          </>
         )}
-        <button className="btn btn-outline" onClick={postX}>
+        <button className="link-btn" onClick={postX}>
           Post on X
         </button>
-        <button className="btn btn-outline" onClick={save} disabled={saving}>
+        <span aria-hidden="true">·</span>
+        <button className="link-btn" onClick={save} disabled={saving}>
           {saving ? 'Drawing…' : 'Save image'}
         </button>
       </div>

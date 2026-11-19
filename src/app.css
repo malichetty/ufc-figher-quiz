@@ -97,10 +97,6 @@ button {
   padding: 14px 18px;
   transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s, color 0.15s;
 }
-.btn:disabled {
-  opacity: 0.6;
-  cursor: wait;
-}
 .btn-primary {
   background: linear-gradient(135deg, var(--red), var(--red-dark));
   color: #fff;
@@ -108,15 +104,6 @@ button {
 .btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 30px rgba(220, 38, 38, 0.35);
-}
-.btn-outline {
-  background: transparent;
-  border: 2px solid #333;
-  color: #ddd;
-}
-.btn-outline:hover {
-  border-color: var(--gold);
-  color: var(--gold);
 }
 .btn-big {
   font-size: 26px;
@@ -135,6 +122,10 @@ button {
 }
 .link-btn:hover {
   color: #fff;
+}
+.link-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 /* Intro */
@@ -357,36 +348,11 @@ button {
   max-width: 440px;
   margin: 0 auto;
 }
-.stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  margin: 18px 0 14px;
-}
-.stat {
-  background: rgba(255, 255, 255, 0.04);
-  border-top: 2px solid var(--gold);
-  padding: 10px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.stat strong {
-  font-family: var(--display);
-  font-weight: 400;
-  font-size: 1.5rem;
-}
-.stat span {
-  color: var(--muted);
-  font-size: 10px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
 .versus {
   text-align: left;
   border-top: 1px solid var(--line);
   padding-top: 14px;
-  margin-bottom: 14px;
+  margin-top: 16px;
 }
 .versus-row {
   display: grid;
@@ -421,7 +387,7 @@ button {
   color: var(--red);
 }
 .vs-verdict {
-  margin: 4px 0 16px;
+  margin-top: 4px;
   color: #e5e5e5;
 }
 .actions {
@@ -436,30 +402,17 @@ button {
 [tabindex='-1']:focus {
   outline: none;
 }
-.card-foot {
+.share-links {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  color: var(--dim);
 }
-.also {
-  color: var(--muted);
-  font-size: 14px;
-  letter-spacing: 0.5px;
-}
-.also strong {
-  color: var(--gold);
-  font-weight: 500;
-}
-.share-row {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 8px;
-}
-.share-row .btn {
-  padding: 10px 6px;
-  font-size: 13px;
-  letter-spacing: 1px;
+.share-links .link-btn {
+  margin: 0;
+  min-height: 40px;
+  padding: 10px 8px;
 }
 
 .bot-check {
@@ -541,19 +494,9 @@ button {
   .vs-verdict {
     line-height: 1.35;
   }
-  .stats {
-    margin: 10px 0 8px;
-  }
-  .stat {
-    padding: 6px 2px;
-    gap: 0;
-  }
-  .stat strong {
-    font-size: 1.25rem;
-  }
   .versus {
     padding-top: 8px;
-    margin-bottom: 8px;
+    margin-top: 10px;
   }
   .versus-row {
     margin-bottom: 4px;
@@ -562,59 +505,10 @@ button {
     font-size: 1.2rem;
   }
   .vs-verdict {
-    margin: 2px 0 6px;
+    margin-top: 2px;
   }
   .actions .btn-big {
     font-size: 24px;
     padding: 14px 20px;
-  }
-}
-
-@media (max-width: 720px) and (max-height: 660px) {
-  .content:has(> .result) {
-    padding-top: 8px;
-  }
-  .card-bar {
-    margin-bottom: 8px;
-  }
-  .fighter-meta {
-    font-size: 12px;
-    letter-spacing: 1px;
-  }
-  .status {
-    margin-left: 6px;
-    font-size: 11px;
-  }
-  .type-badge,
-  .match-pct {
-    font-size: 1.1rem;
-  }
-  .type-row {
-    margin: 8px 0 4px;
-  }
-  .type-desc {
-    font-size: 0.95rem;
-  }
-  .stats {
-    margin: 8px 0 6px;
-  }
-  .also {
-    font-size: 13px;
-  }
-  .stat {
-    padding: 4px 2px;
-  }
-  .stat strong {
-    font-size: 1.1rem;
-  }
-  .versus-row strong {
-    font-size: 1.05rem;
-  }
-  .vs-verdict {
-    font-size: 15px;
-  }
-  .actions .btn-big {
-    font-size: 22px;
-    padding: 12px 18px;
   }
 }
