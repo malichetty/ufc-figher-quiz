@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import roster from './data/roster.json';
+import { QUOTES } from './data/quotes.js';
 import { QUESTIONS } from './lib/questions.js';
 import { TYPES } from './lib/types.js';
 import { verdict } from './lib/versus.js';
@@ -269,6 +270,7 @@ function Result({ result, own, challenger, onRetake, onChallenge }) {
     [own, fighter.slug, answers],
   );
   const status = statusOf(fighter);
+  const quote = QUOTES[fighter.slug];
   const versus = challenger && own && challenger.axes && axes;
   const heading = own ? 'You fight like' : 'Your friend fights like';
   const nameRef = useRef(null);
@@ -299,6 +301,12 @@ function Result({ result, own, challenger, onRetake, onChallenge }) {
           {matchPct != null && <span className="match-pct">{matchPct}% match</span>}
         </div>
         <p className="type-desc">{t.tagline}</p>
+        {quote && !versus && (
+          <figure className="quote">
+            <blockquote>“{quote.line}”</blockquote>
+            <figcaption>— {quote.by}</figcaption>
+          </figure>
+        )}
 
         {versus && (
           <div className="versus">

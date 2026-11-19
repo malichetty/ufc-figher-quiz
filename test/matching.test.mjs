@@ -1,4 +1,4 @@
-// PRD acceptance criteria US-001, US-003, US-008 (tasks/prd-relaunch.md).
+// PRD acceptance criteria US-001, US-003, US-008, US-010 (tasks/prd-relaunch.md).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -8,6 +8,7 @@ import { TYPE_CODES } from '../src/lib/types.js';
 import { parseShareLocation, sharePath } from '../src/lib/share.js';
 import { buildRoster } from '../src/lib/roster.js';
 import { verdict } from '../src/lib/versus.js';
+import { QUOTES } from '../src/data/quotes.js';
 
 const roster = JSON.parse(readFileSync(new URL('../src/data/roster.json', import.meta.url), 'utf8'));
 
@@ -165,4 +166,16 @@ test('US-003 share URLs round-trip, and old links still parse', () => {
   assert.equal(parseShareLocation('/', "?result=sean-o'malley").slug, 'sean-o-malley');
   assert.equal(parseShareLocation('/', '?result=khalil-rountree-jr.').slug, 'khalil-rountree-jr');
   assert.equal(parseShareLocation('/r/<bad>', ''), null);
+});
+
+test('US-010 fighter quotes are short, attributed, bleeped and belong to pool fighters', () => {
+  const slugs = new Set(roster.fighters.map((f) => f.slug));
+  const swears = ['fuck', 'shit'];
+  for (const [slug, { line, by }] of Object.entries(QUOTES)) {
+    assert.ok(slugs.has(slug), `${slug} is not in the roster`);
+    assert.ok(line.split(/\s+/).length <= 12, `${slug}: more than 12 words`);
+    assert.ok(line.length <= 80, `${slug}: more than 80 characters`);
+    assert.ok(typeof by === 'string' && by.trim(), `${slug}: no attribution`);
+    for (const w of swears) assert.ok(!line.toLowerCase().includes(w), `${slug}: undashed swear word`);
+  }
 });
