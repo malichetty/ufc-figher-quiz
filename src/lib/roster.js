@@ -79,7 +79,7 @@ export function buildRoster(rows, rules = ROSTER_RULES, stars = STARS) {
     .toISOString()
     .slice(0, 10);
 
-  // `active` sets the stat scale and the type shares; `eligible` adds the
+  // `active` sets the stat scale and centres the axes; `eligible` adds the
   // curated stars and legends, who may not have fought in years.
   const active = [];
   const eligible = [];

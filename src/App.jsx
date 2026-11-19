@@ -301,7 +301,7 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
   }, [fighter.slug]);
 
   return (
-    <section className={`result fade-in ${own ? 'is-own' : 'is-friend'}`}>
+    <section className="result fade-in">
       <article className="card">
         <div className="card-bar" />
         <p className="card-kicker">{heading}</p>

@@ -4,7 +4,7 @@
 export const TYPES = {
   SPF: {
     name: 'The Knockout Artist',
-    tagline: 'You end arguments in one sentence.',
+    tagline: 'Ends arguments in one sentence.',
   },
   SPD: {
     name: 'The Volume Machine',
@@ -20,19 +20,19 @@ export const TYPES = {
   },
   GPF: {
     name: 'The Mauler',
-    tagline: "You don't knock. You come through the wall.",
+    tagline: "Doesn't knock. Comes through the wall.",
   },
   GPD: {
     name: 'The Grinder',
-    tagline: 'You win by being annoying for longer.',
+    tagline: 'Wins by being annoying for longer.',
   },
   GCF: {
     name: 'The Submission Artist',
-    tagline: 'You let people talk until they trap themselves.',
+    tagline: 'Lets people talk until they trap themselves.',
   },
   GCD: {
     name: 'The Chess Master',
-    tagline: 'You planned how this ends before it started.',
+    tagline: 'Planned how this ends before it started.',
   },
 };
 
