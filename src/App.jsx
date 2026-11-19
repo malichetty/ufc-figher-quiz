@@ -3,7 +3,7 @@ import roster from './data/roster.json';
 import { QUESTIONS } from './lib/questions.js';
 import { AXES, TYPES } from './lib/types.js';
 import { findMatch, rank, scoreFighter, userAxes } from './lib/match.js';
-import { NAME_MAX, parseShareLocation, sanitizeName, sharePath, shareUrl } from './lib/share.js';
+import { parseShareLocation, sharePath, shareUrl } from './lib/share.js';
 import { saveResultImage } from './lib/card-image.js';
 import { fetchTally, prepareBotCheck, recordTally } from './lib/tally.js';
 import { statusOf } from './lib/status.js';
@@ -35,17 +35,17 @@ const track = (event, params) => {
 const lastName = (name) => name.replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/i, '').split(' ').slice(-1)[0];
 
 // Everything the result screen shows, rebuilt from a share URL or a finished quiz.
-function buildResult({ slug, name, answers, division }) {
+function buildResult({ slug, answers }) {
   const fighter = bySlug.get(slug);
   if (!fighter) return null;
-  const base = { fighter, type: fighter.type, name, answers, division };
+  const base = { fighter, type: fighter.type, answers };
   if (!answers) return base;
-  const fresh = findMatch(roster, answers, division);
+  const fresh = findMatch(roster, answers);
   if (fresh && fresh.fighter.slug === slug) return { ...base, ...fresh, type: fighter.type };
   // The roster moved on since the link was made: keep the linked fighter and
   // score them against the saved answers.
   const axes = userAxes(answers);
-  const { ranked } = rank(roster, answers, division);
+  const { ranked } = rank(roster, answers);
   return {
     ...base,
     axes,
@@ -77,8 +77,6 @@ export default function App() {
   const [result, setResult] = useState(init.result || null);
   const [own, setOwn] = useState(!!init.own);
   const [challenger, setChallenger] = useState(null);
-  const [name, setName] = useState(() => sanitizeName(store.get('ufcq:name')));
-  const [division, setDivision] = useState(() => store.get('ufcq:division') || 'all');
   const [answers, setAnswers] = useState([]);
   const [tally, setTally] = useState(null);
   // The result whose counts came from the record call; a cached read must not
@@ -119,7 +117,7 @@ export default function App() {
 
   useEffect(() => {
     if (stage === 'result' && result) {
-      const who = own ? (result.name ? `${result.name} fights` : 'I fight') : `${result.name || 'Your friend'} fights`;
+      const who = own ? 'I fight' : 'Your friend fights';
       document.title = `${who} like ${result.fighter.name} | Which UFC Fighter Are You?`;
     } else {
       document.title = 'Which UFC Fighter Are You?';
@@ -127,24 +125,20 @@ export default function App() {
   }, [stage, result, own]);
 
   const start = () => {
-    const clean = sanitizeName(name);
-    setName(clean);
-    store.set('ufcq:name', clean);
-    store.set('ufcq:division', division);
     setAnswers([]);
     setNotice('');
     setStage('quiz');
     prepareBotCheck();
-    track('quiz_start', { division });
+    track('quiz_start');
   };
 
   const answer = (choice) => {
     const next = [...answers, choice];
     setAnswers(next);
     if (next.length < QUESTIONS.length) return;
-    const match = findMatch(roster, next, division);
-    const r = { ...match, name: sanitizeName(name), answers: next, division };
-    const path = sharePath({ slug: match.fighter.slug, name: r.name, answers: next, division });
+    const match = findMatch(roster, next);
+    const r = { ...match, answers: next };
+    const path = sharePath({ slug: match.fighter.slug, answers: next });
     store.set('ufcq:last', path);
     setTally(null);
     fresh.current = r;
@@ -161,7 +155,7 @@ export default function App() {
     setResult(r);
     setOwn(true);
     setStage('reveal');
-    track('quiz_complete', { type: match.type, fighter: match.fighter.slug, division });
+    track('quiz_complete', { type: match.type, fighter: match.fighter.slug });
     window.setTimeout(() => {
       if (fresh.current !== r) return; // the person navigated away during the reveal
       window.history.pushState({}, '', path);
@@ -195,19 +189,10 @@ export default function App() {
       <div className="bg" aria-hidden="true" />
       <main className="content">
         {stage === 'intro' && (
-          <Intro
-            name={name}
-            setName={setName}
-            division={division}
-            setDivision={setDivision}
-            onStart={start}
-            notice={notice}
-            challenger={challenger}
-            tally={tally}
-          />
+          <Intro onStart={start} notice={notice} challenger={challenger} tally={tally} />
         )}
         {stage === 'quiz' && (
-          <Quiz index={answers.length} name={sanitizeName(name)} onAnswer={answer} onBack={back} />
+          <Quiz index={answers.length} onAnswer={answer} onBack={back} />
         )}
         {stage === 'reveal' && <Reveal />}
         {stage === 'result' && result && (
@@ -228,60 +213,22 @@ export default function App() {
   );
 }
 
-function Intro({ name, setName, division, setDivision, onStart, notice, challenger, tally }) {
+function Intro({ onStart, notice, challenger, tally }) {
   return (
     <section className="intro fade-in">
       {notice && <p className="notice">{notice}</p>}
       {challenger && (
         <p className="challenge-banner">
-          {challenger.name || 'Your friend'} got <strong>{challenger.fighter.name}</strong>. Your turn.
+          Your friend got <strong>{challenger.fighter.name}</strong>. Your turn.
         </p>
       )}
       <p className="eyebrow">Six questions</p>
       <h1 className="title">
         Which UFC fighter <span>are you?</span>
       </h1>
-      <form
-        className="start-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          onStart();
-        }}
-      >
-        <label className="field">
-          <span className="sr-only">Your name (optional)</span>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={NAME_MAX * 3}
-            placeholder="Your name (optional)"
-            autoComplete="given-name"
-            enterKeyHint="go"
-          />
-        </label>
-        <fieldset className="segmented">
-          <legend className="sr-only">Match me with</legend>
-          {[
-            ['all', 'Anyone'],
-            ['men', 'Men'],
-            ['women', 'Women'],
-          ].map(([value, label]) => (
-            <label key={value} className={division === value ? 'on' : ''}>
-              <input
-                type="radio"
-                name="division"
-                value={value}
-                checked={division === value}
-                onChange={() => setDivision(value)}
-              />
-              {label}
-            </label>
-          ))}
-        </fieldset>
-        <button type="submit" className="btn btn-primary btn-big">
-          Find my fighter
-        </button>
-      </form>
+      <button className="btn btn-primary btn-big start-btn" onClick={onStart}>
+        Find my fighter
+      </button>
       {tally?.total > 0 && (
         <p className="social-proof">
           <strong>{tally.total.toLocaleString()}</strong> fighters found
@@ -291,7 +238,7 @@ function Intro({ name, setName, division, setDivision, onStart, notice, challeng
   );
 }
 
-function Quiz({ index, name, onAnswer, onBack }) {
+function Quiz({ index, onAnswer, onBack }) {
   const q = QUESTIONS[index];
   const heading = useRef(null);
   // Keyboard and screen-reader users land on each new question.
@@ -336,21 +283,17 @@ function Reveal() {
 }
 
 function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
-  const { fighter, type, name, axes, matchPct, runnersUp, answers, division } = result;
+  const { fighter, type, axes, matchPct, runnersUp, answers } = result;
   const t = TYPES[type];
   const share = useMemo(
-    () => (own ? shareUrl({ slug: fighter.slug, name, answers, division }) : null),
-    [own, fighter.slug, name, answers, division],
+    () => (own ? shareUrl({ slug: fighter.slug, answers }) : null),
+    [own, fighter.slug, answers],
   );
   const status = statusOf(fighter);
   const counted = tally?.total > 0 && tally.fighter > 0;
   const surname = lastName(fighter.name);
   const versus = challenger && own && challenger.axes && axes;
-  const heading = own
-    ? name
-      ? `${name}, you fight like`
-      : 'You fight like'
-    : `${name || 'Your friend'} fights like`;
+  const heading = own ? 'You fight like' : 'Your friend fights like';
   const nameRef = useRef(null);
   useEffect(() => {
     nameRef.current?.focus();
@@ -391,11 +334,11 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
               </div>
               <span className="vs">VS</span>
               <div>
-                <span className="vs-label">{challenger.name || 'Friend'}</span>
+                <span className="vs-label">Friend</span>
                 <strong>{challenger.fighter.name}</strong>
               </div>
             </div>
-            <p className="vs-verdict">{verdict(axes, challenger.axes, challenger.name)}</p>
+            <p className="vs-verdict">{verdict(axes, challenger.axes)}</p>
           </div>
         )}
 
@@ -447,14 +390,13 @@ const ROLE = {
   Decision: 'points fighter',
 };
 
-function verdict(a, b, otherName) {
-  const who = otherName || 'your friend';
+function verdict(a, b) {
   const diffs = AXES.map((x) => ({ x, d: a[x.key] - b[x.key] })).sort((p, q) => Math.abs(q.d) - Math.abs(p.d));
   const top = diffs[0];
-  if (Math.abs(top.d) < 0.35) return `You and ${who} fight almost the same way. That's a five-round war.`;
+  if (Math.abs(top.d) < 0.35) return "You and your friend fight almost the same way. That's a five-round war.";
   const you = ROLE[top.d > 0 ? top.x.plus : top.x.minus];
   const them = ROLE[top.d > 0 ? top.x.minus : top.x.plus];
-  return `Biggest difference: you're the ${you}, ${who} is the ${them}.`;
+  return `Biggest difference: you're the ${you}, your friend is the ${them}.`;
 }
 
 function Stat({ label, value }) {
@@ -469,8 +411,8 @@ function Stat({ label, value }) {
 function ShareActions({ result, url }) {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
-  const { fighter, name } = result;
-  const text = `${name ? `${name} fights` : 'I fight'} like ${fighter.name}. Which UFC fighter are you?`;
+  const { fighter } = result;
+  const text = `I fight like ${fighter.name} 🥊 Which UFC fighter are you?`;
   const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   const nativeShare = async () => {

@@ -172,67 +172,9 @@ button {
 .challenge-banner strong {
   color: var(--gold);
 }
-.start-form {
+.start-btn {
   max-width: 560px;
   margin: 0 auto;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  text-align: left;
-}
-.field span,
-.segmented legend {
-  display: block;
-  font-size: 12px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 8px;
-}
-.field input {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid #333;
-  color: #fff;
-  font-family: var(--body);
-  font-size: 18px;
-  padding: 14px 16px;
-}
-.field input:focus {
-  border-color: var(--gold);
-  outline: none;
-}
-.segmented {
-  border: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
-.segmented legend {
-  grid-column: 1 / -1;
-}
-.segmented label {
-  border: 1px solid #333;
-  text-align: center;
-  padding: 11px 6px;
-  font-size: 14px;
-  cursor: pointer;
-  color: var(--muted);
-}
-.segmented label.on {
-  border-color: var(--gold);
-  color: var(--gold);
-  background: rgba(212, 175, 55, 0.08);
-}
-.segmented label:focus-within {
-  outline: 2px solid var(--gold);
-  outline-offset: 2px;
-}
-.segmented input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
 }
 
 /* Quiz */
@@ -505,14 +447,6 @@ button {
   top: 24px;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
 [tabindex='-1']:focus {
   outline: none;
 }
@@ -593,9 +527,5 @@ button {
   .actions {
     flex-basis: 100%;
     position: static;
-  }
-  .segmented label {
-    font-size: 12.5px;
-    padding: 10px 4px;
   }
 }

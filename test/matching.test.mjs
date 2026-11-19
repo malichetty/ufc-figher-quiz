@@ -1,11 +1,11 @@
-// PRD acceptance criteria US-001, US-002, US-003 (tasks/prd-relaunch.md).
+// PRD acceptance criteria US-001, US-003, US-008 (tasks/prd-relaunch.md).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { findMatch } from '../src/lib/match.js';
 import { QUESTIONS } from '../src/lib/questions.js';
 import { TYPE_CODES } from '../src/lib/types.js';
-import { parseShareLocation, sanitizeName, sharePath } from '../src/lib/share.js';
+import { parseShareLocation, sharePath } from '../src/lib/share.js';
 import { buildRoster } from '../src/lib/roster.js';
 
 const roster = JSON.parse(readFileSync(new URL('../src/data/roster.json', import.meta.url), 'utf8'));
@@ -75,15 +75,6 @@ test('US-001 same answers always give the same fighter', () => {
   assert.equal(findMatch(roster, a).fighter.slug, findMatch(roster, a).fighter.slug);
 });
 
-test('US-002 names are reduced to allowed characters', () => {
-  assert.equal(sanitizeName('<script>alert(1)</script>'), 'scriptalertscript');
-  assert.equal(sanitizeName('Aris 🥊'), 'Aris');
-  assert.equal(sanitizeName("  José   O'Neil-Smith  "), "José O'Neil-Smith");
-  assert.equal(sanitizeName('x'.repeat(50)).length, 20);
-  assert.equal(sanitizeName(null), '');
-  assert.equal(sanitizeName(`${'x'.repeat(19)}𝐀b`), `${'x'.repeat(19)}𝐀`);
-});
-
 const byName = new Map(roster.fighters.map((f) => [f.name, f]));
 const known = (f) => !!(f.tier || f.champion);
 
@@ -139,20 +130,26 @@ test('a pure wrestler gets a known grappler, a pure knockout striker a known str
 });
 
 test('US-003 share URLs round-trip, and old links still parse', () => {
-  const path = sharePath({ slug: 'justin-gaethje', name: 'Aris', answers: [0, 1, 2, 3, 0, 1], division: 'men' });
-  assert.equal(path, '/r/justin-gaethje?n=Aris&a=012301&d=men');
+  const path = sharePath({ slug: 'justin-gaethje', answers: [0, 1, 2, 3, 0, 1] });
+  assert.equal(path, '/r/justin-gaethje?a=012301');
   const [pathname, search] = path.split('?');
   assert.deepEqual(parseShareLocation(pathname, `?${search}`), {
     slug: 'justin-gaethje',
-    name: 'Aris',
     answers: [0, 1, 2, 3, 0, 1],
-    division: 'men',
     legacy: false,
   });
-  const bad = parseShareLocation('/r/justin-gaethje', '?a=9999&d=nope');
-  assert.equal(bad.answers, null);
-  assert.equal(bad.division, 'all');
-  assert.equal(parseShareLocation('/', '?result=jon-jones&from=Aris').slug, 'jon-jones');
+  assert.equal(parseShareLocation('/r/justin-gaethje', '?a=9999').answers, null);
+  // n= and d= on older links are ignored.
+  assert.deepEqual(parseShareLocation('/r/justin-gaethje', '?n=Aris&a=012301&d=men'), {
+    slug: 'justin-gaethje',
+    answers: [0, 1, 2, 3, 0, 1],
+    legacy: false,
+  });
+  assert.deepEqual(parseShareLocation('/', '?result=jon-jones&from=Aris'), {
+    slug: 'jon-jones',
+    answers: null,
+    legacy: true,
+  });
   // Old links kept punctuation from the fighter's name.
   assert.equal(parseShareLocation('/', "?result=sean-o'malley").slug, 'sean-o-malley');
   assert.equal(parseShareLocation('/', '?result=khalil-rountree-jr.').slug, 'khalil-rountree-jr');

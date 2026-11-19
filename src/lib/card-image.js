@@ -1,7 +1,7 @@
 import { statusOf } from './status.js';
 
-// Draws a 1080x1350 result card in the browser (Canvas, no library) so the
-// person's name can appear on an image without any server rendering.
+// Draws a 1080x1350 result card in the browser (Canvas, no library), with no
+// server rendering.
 const W = 1080;
 const H = 1350;
 const GOLD = '#d4af37';
@@ -30,7 +30,7 @@ function spaced(ctx, text, x, y, spacing, align = 'left') {
   ctx.textAlign = previous;
 }
 
-export async function drawResultCard({ fighter, name, matchPct }, type) {
+export async function drawResultCard({ fighter, matchPct }, type) {
   await Promise.all([
     document.fonts.load('120px "Bebas Neue"'),
     document.fonts.load('500 40px "Oswald"'),
@@ -61,8 +61,7 @@ export async function drawResultCard({ fighter, name, matchPct }, type) {
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = GOLD;
   ctx.font = `500 34px ${OSWALD}`;
-  const kicker = (name ? `${name} fights like` : 'I fight like').toUpperCase();
-  spaced(ctx, kicker, W / 2, 190, 6, 'center');
+  spaced(ctx, 'I FIGHT LIKE', W / 2, 190, 6, 'center');
 
   ctx.textAlign = 'center';
   if (fighter.nickname) {
