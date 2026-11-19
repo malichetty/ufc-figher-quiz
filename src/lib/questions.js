@@ -1,7 +1,7 @@
 // Each option moves the person's style axes: R striker(+)/grappler(-),
 // T pressure(+)/counter(-), F finisher(+)/decision(-), W knockout(+)/submission(-).
 // Every question's options sum to roughly zero on each axis, so no type is
-// favoured by the question set itself (checked in test/matching.test.mjs).
+// favoured by the question set itself.
 export const QUESTIONS = [
   {
     id: 'bell',
@@ -34,23 +34,23 @@ export const QUESTIONS = [
     ],
   },
   {
-    id: 'round3',
-    question: "Round three. You're exhausted. You:",
+    id: 'deadline',
+    question: "It's 4pm. The deadline is 5. You're cooked. You:",
     options: [
-      { text: "Push harder. They're more tired than me.", value: { T: 1, F: -0.5 } },
-      { text: 'Swing for the fences', value: { T: 0.5, F: 1, W: 0.5 } },
-      { text: 'Stay sharp, counter and move', value: { T: -1, R: 0.5 } },
-      { text: 'Hold position and steal the round', value: { T: -0.5, R: -0.5, F: -0.5 } },
+      { text: 'Coffee. Outwork it.', value: { T: 1, F: -0.5 } },
+      { text: 'One big swing. Ship it and pray.', value: { T: 0.5, F: 1, W: 0.5 } },
+      { text: 'Cut it to the one part that matters and nail that', value: { T: -1, R: 0.5 } },
+      { text: 'Ask for an extension and run out the clock', value: { T: -0.5, R: -0.5, F: -0.5 } },
     ],
   },
   {
-    id: 'trash',
-    question: 'They talk trash at the press conference. You:',
+    id: 'groupchat',
+    question: 'The group chat is arguing. You:',
     options: [
-      { text: 'Fire back louder', value: { T: 1, F: 0.5 } },
-      { text: 'Say nothing. Hands do the talking.', value: { T: -0.5, F: 0.5 } },
-      { text: 'Smile. Promise them a long night.', value: { T: 0.5, F: -1 } },
-      { text: "Don't even look at them", value: { T: -1 } },
+      { text: 'Send 14 messages in a row', value: { T: 1, F: 0.5 } },
+      { text: 'Wait. Then one line that ends it.', value: { T: -0.5, F: 0.5 } },
+      { text: "Keep it going all night. You're enjoying this.", value: { T: 0.5, F: -1 } },
+      { text: 'Mute it', value: { T: -1 } },
     ],
   },
   {

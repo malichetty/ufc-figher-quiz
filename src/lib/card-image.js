@@ -90,7 +90,7 @@ export async function drawResultCard({ fighter, matchPct }, type) {
 
   ctx.fillStyle = '#e5e5e5';
   ctx.font = `500 38px ${OSWALD}`;
-  ctx.fillText(type.tagline, W / 2, 760);
+  ctx.fillText(type.tagline, W / 2, 760, W - 120);
 
   if (matchPct != null) {
     ctx.fillStyle = GOLD;

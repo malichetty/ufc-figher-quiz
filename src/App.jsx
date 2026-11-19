@@ -231,7 +231,7 @@ function Intro({ onStart, notice, challenger, tally }) {
       </button>
       {tally?.total > 0 && (
         <p className="social-proof">
-          <strong>{tally.total.toLocaleString()}</strong> fighters found
+          <strong>{tally.total.toLocaleString()}</strong> people matched
         </p>
       )}
     </section>
