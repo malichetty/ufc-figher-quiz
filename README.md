@@ -12,13 +12,13 @@
 
 | | |
 |---|---|
-| 🥋 **Fighters people know** | ~210 fighters: today's champions and contenders plus the legends (GSP, Khabib, Jon Jones, Ronda…), refreshed from the API |
-| 👥 **Live counter** | "1,234 people have found their fighter", bot-checked with Turnstile and capped per day |
+| 🥋 **Fighters people know** | ~140 fighters, men and women: today's champions and best-known contenders plus the legends (GSP, Khabib, Jon Jones, Ronda…), refreshed from the API |
+| 👥 **Live counter** | "1,234 people matched", bot-checked with Turnstile and capped per day |
 | 🧠 **Eight fighting types** | Striker or grappler, pressure or counter, finisher or decision: you get a type and a fighter |
-| 🔗 **A page per result** | `ufc.aristotle.me/r/<fighter>?n=<name>` opens straight to the result |
-| 🖼️ **Social previews** | Every fighter has a preview image; the link title carries your name |
+| 🔗 **A page per result** | `ufc.aristotle.me/r/<fighter>?a=<answers>` opens straight to the result |
+| 🖼️ **Social previews** | Every fighter has a preview image; the link reads "I fight like <fighter>" |
 | ⚔️ **You vs your friend** | Open a friend's link, take the quiz, and see your styles side by side |
-| 📸 **Save image** | A portrait card with your name, drawn in the browser |
+| 📸 **Save image** | A portrait card of your result, drawn in the browser |
 
 ---
 
@@ -26,10 +26,10 @@
 
 ```
 UFC Stats API ──(build)──► roster.json + one preview PNG per fighter ──► static site
-Your answers ──► style axes ──► nearest active fighter ──► /r/<fighter>?n=…&a=…
+Your answers ──► style axes ──► nearest known fighter ──► /r/<fighter>?a=…
 ```
 
-1. `scripts/build-roster.mjs` pulls every fighter from the public API, keeps the active ones (a UFC fight in the last 18 months, 4+ UFC fights, winning record) plus the curated stars and legends in `src/data/stars.js`, and scores each on three axes from their stats.
+1. `scripts/build-roster.mjs` pulls every fighter from the public API, keeps the champions, the curated stars and legends in `src/data/stars.js`, and the 5 best-known active fighters per division (a UFC fight in the last 18 months, 4+ UFC fights, winning record), and scores each on three axes from their stats and how they win.
 2. Your six answers land on the same axes. The closest fighter wins; same answers, same fighter.
 3. `scripts/render-og.mjs` draws a preview image per fighter once, at build time.
 4. `functions/r/[slug].js` (a Cloudflare Pages Function) fills in the link-preview tags for share links. It renders nothing and stores nothing.

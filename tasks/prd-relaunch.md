@@ -1,27 +1,27 @@
 # PRD: Relaunch "Which UFC Fighter Are You?"
 
-> Rebuild the quiz around today's active UFC roster, give every result its own shareable page with a social preview image, and let people put their name on it. No sign-up, no per-visit API calls, no image rendering on request.
+> Rebuild the quiz around today's active UFC roster and the legends people know, and give every result its own shareable page with a social preview image. No sign-up, no inputs, no per-visit API calls, no image rendering on request.
 
 **Owner:** Aris · **Status:** Building · **Date:** 2026-11-13
 **Builds on:** `ufc-fighter-quiz.jsx` (the whole app today), `index.html` (meta tags, GA4), `worker/worker.js` (the `ufc-quiz-proxy` Worker), the UFC Stats API at `ufcapi.aristotle.me`.
 
-## Scope decisions (confirmed 2026-11-13; 2 to 3b and 8 revised the same day after Aris's review)
+## Scope decisions (confirmed 2026-11-13; 2 to 3b and 8 revised the same day after Aris's review; 2, 4, 6, 7, 11 and 12 revised 2026-11-18)
 
 | # | Decision | Why |
 |---|---|---|
 | 1 | **Fighter data is baked in at build time**, not fetched on every visit. A build script pulls the roster from the public API (10 paged calls), picks the active pool and writes one small JSON file the app ships with. | Every visit today downloads 6.1 MB of JSON through the proxy (measured). The baked file is ~60 KB, needs no API key in the browser path and costs nothing per visit. |
-| 2 | **The pool mixes today's fighters with the legends.** Active means a UFC fight in the last 18 months and at least 4 UFC fights; current champions are always in. From the active fighters with a winning UFC record, the 12 best known per division join, plus every champion, plus every curated star and legend (decision 3b), topped up so each type has at least 10 men and 5 women. 209 fighters today: 57 of them have not fought in 18 months (Jon Jones, Khabib, GSP, Ronda Rousey, Anderson Silva…). | People want to be compared to fighters they know and admire, not to an unknown with a losing record. Legends carry their career stats; current fighters keep the roster fresh. |
+| 2 | **One pool of names people know, men and women together.** Active means a UFC fight in the last 18 months and at least 4 UFC fights; current champions are always in. The pool is every champion, every curated star and legend (decision 3b), and the 5 best-known active fighters with a winning UFC record from each division. A type with fewer than 8 fighters is topped up with the next best-known active fighters of that type (today that adds 4 Volume Machines). 137 fighters today: 57 of them have not fought in 18 months (Jon Jones, Khabib, GSP, Ronda Rousey, Anderson Silva…). | People want to be compared to fighters they know and admire, not to an unknown with a losing record. Legends carry their career stats; current fighters keep the roster fresh. |
 | 3 | **Prominence = data plus a curated floor.** From the data: champion flag, fights that went past round 3 (only five-round main events and title fights can), UFC wins and win rate. On top, curated names get a floor: icons 1.0, stars 0.75, champions 1.0. | The data alone ranks a busy contender above Conor McGregor. The floor fixes that without a hand-tuned score per fighter. |
-| 3b | **A curated list of stars and legends** (`src/data/stars.js`): 29 icons (GSP, Khabib, Jon Jones, Conor, Ronda, Nunes, Pereira, Topuria…) and 83 stars (former champions, fan favourites, big current names). They join the pool whether or not they still fight; the build warns if a name stops matching the API. Shown as "Legend" (icons who have stopped) or "Last fought 2023" (others who have stopped). | Fame is what people share. 9 in 10 answer sets now land on a champion, legend or star. |
-| 4 | **Eight personality types from three axes**: Striker or Grappler, Pressure or Counter, Finisher or Decision. Each fighter's type comes from their stats; each person's type comes from their answers. | A median split on each axis gives eight types that all have real current fighters in them. People get a label they can repeat ("I'm a Sniper"). |
+| 3b | **A curated list of stars and legends** (`src/data/stars.js`): 29 icons (GSP, Khabib, Jon Jones, Conor, Ronda, Nunes, Pereira, Topuria…) and 83 stars (former champions, fan favourites, big current names). They join the pool whether or not they still fight; the build warns if a name stops matching the API. Shown as "Legend" (icons who have stopped) or "Last fought 2023" (others who have stopped). | Fame is what people share. Every answer set now lands on a champion, legend or star. |
+| 4 | **Eight personality types from three axes**: Striker or Grappler, Pressure or Counter, Finisher or Decision. How a fighter wins counts: a knockout puncher is a striker even at low volume, and chaining takedowns counts as pressure. A grappler who finishes fights is named by how they finish: The Mauler for knockouts, The Submission Artist for submissions. Each fighter's type comes from their stats; each person's type comes from their answers, by the same rules. | A median split on each axis gives eight types that all have real fighters in them, and the label matches what fans know (Ngannou is a striker, Khabib a pressure grappler). People get a label they can repeat ("I'm a Sniper"). |
 | 5 | **Matching is deterministic**: the same answers always give the same fighter. | The old code rolled dice over the top 5, so retaking gave a different fighter. A result you can share should be repeatable. |
-| 6 | **Share links look like `ufc.aristotle.me/r/justin-gaethje?n=Aris&a=021301`**: fighter slug in the path, optional name, and the six answers. | Opens straight to the result. The answers let the page rebuild the full result (type, match %, runners-up) and power "You vs Aris" when a friend takes it. |
-| 7 | **The preview image is pre-rendered once per fighter at build time** (225 PNGs, about 60 seconds of build time). The person's name goes in the preview's title text ("Aris fights like Justin Gaethje"), not in the image. | No image is ever drawn on request, so cost is flat no matter how often a link is shared. The title is set by a tiny Pages Function that rewrites the meta tags; it does no rendering and no storage. |
-| 8 | **The "X people found their fighter" counter is back, rebuilt safely.** A Pages Function (`/api/tally`) counts finished quizzes in Cloudflare D1 (a small SQL database), after an invisible Turnstile bot check, with a daily cap of 15,000. It shows on the start screen ("1,234 people have found their fighter") and on the result ("You're one of 41 people who got Gaethje. 18% of quiz takers are Knockout Artists."). It stays hidden until the database and bot check are set up (Open Questions). | Social proof makes people start the quiz. The old counter had no bot protection and a KV write per request; this one cannot be inflated by scripts, cannot lose counts to races, and its cost is capped. The old 62 quizzes carry over. |
+| 6 | **Share links look like `ufc.aristotle.me/r/justin-gaethje?a=021301`**: fighter slug in the path and the six answers. Older links with a name (`n=`) or division (`d=`) still open; both are ignored. | Opens straight to the result. The answers let the page rebuild the full result (type, match %, runners-up) and power "You vs Friend" when a friend takes it. |
+| 7 | **The preview image is pre-rendered once per fighter at build time** (137 PNGs, about 40 seconds of build time). The preview title reads "I fight like Justin Gaethje 🥊". | No image is ever drawn on request, so cost is flat no matter how often a link is shared. The title is set by a tiny Pages Function that rewrites the meta tags; it does no rendering and no storage. |
+| 8 | **The "X people matched" counter is back, rebuilt safely.** A Pages Function (`/api/tally`) counts finished quizzes in Cloudflare D1 (a small SQL database), after an invisible Turnstile bot check, with a daily cap of 15,000. It shows on the start screen ("1,234 people matched") and on the result ("You're one of 41 people who got Gaethje. 18% of quiz takers are Knockout Artists."). It stays hidden until the database and bot check are set up (Open Questions). | Social proof makes people start the quiz. The old counter had no bot protection and a KV write per request; this one cannot be inflated by scripts, cannot lose counts to races, and its cost is capped. The old 62 quizzes carry over. |
 | 9 | **The proxy Worker code in the repo is reconciled to the live, locked-down version.** After this ships the app no longer calls it. Retiring it is your call (below). | The repo copy still forwarded any `/api/fighters*` path with the admin key. |
 | 10 | **Weekly refresh is a GitHub Action that calls a Cloudflare Pages deploy hook** on Tuesdays, after the API's Sunday/Monday refresh. It does nothing until you create the hook and add it as a repo secret. | Keeps the roster current with no server. Needs your yes because it creates things on Cloudflare and GitHub. |
-| 11 | **Name is optional, on the start screen**, stored only in the browser and the share link. | Fewest steps: one optional field, no account. |
-| 12 | **Division filter on the start screen** (Anyone / Men's / Women's), defaulting to Anyone. | One tap, no extra screen, and it fixes the most common "that's not me" complaint. |
+| 11 | **No name field.** The start screen is the title, one "Find my fighter" button and the counter. Results read "You fight like" for the person who took the quiz and "Your friend fights like" for anyone opening a shared link. | Fewest steps: one tap to start. Previews and posts read "I fight like…", which works for everyone. |
+| 12 | **No men/women filter.** Everyone is matched against one pool of men and women. | The pool is now only names people know, so a result from another division is still a fighter you recognise, and one pool keeps every type well stocked. |
 
 ## 1. Introduction / Overview
 
@@ -34,11 +34,11 @@ The quiz at ufc.aristotle.me asks 5 questions and names a UFC fighter. It is due
 
 ## 2. Goals
 
-- Every result is a current fighter: active in the last 18 months, recognisable, in the person's chosen divisions.
-- A result has its own URL that opens straight to it, with a preview card showing the fighter and type, and the person's name in the title.
+- Every result is a fighter people know: a champion, a curated star or legend, or one of the best-known active fighters.
+- A result has its own URL that opens straight to it, with a preview card showing the fighter and type.
 - The quiz loads in under a second on mobile (no runtime data call).
 - Cost stays flat with traffic: no per-visit API call, no KV writes, no on-request image rendering.
-- Sharing loop: a friend who opens a link sees "Aris fights like X", takes the quiz, and gets "You vs Aris".
+- Sharing loop: a friend who opens a link sees "Your friend fights like X", takes the quiz, and gets "You vs Friend".
 
 ## 3. User Stories
 
@@ -48,30 +48,33 @@ As a quiz taker, I want a fighter who is fighting now, so the result means somet
 - [ ] Build script fetches all fighters from `https://ufcapi.aristotle.me/api/fighters` (anonymous, `limit=500`, paged by `offset`), spaced to stay under 30 requests a minute, with at most 3 tries per page.
 - [ ] If the fetch fails, the build keeps the committed `src/data/roster.json` and still succeeds.
 - [ ] Active = last UFC fight within 548 days of the newest fight in the data, at least 4 UFC fights (champions exempt from both rules), `slpm > 0`, a real division (not Catch Weight).
-- [ ] Pool = top 18 per division by prominence, plus all `is_champion` fighters, plus the per-type top-up.
-- [ ] *Verifiable:* `npm test` checks, over all 4,096 answer combinations and each division filter: no fighter gets more than 8% of combinations (10% for the smaller women's pool); at least 60 different fighters are reachable (40 for women's); all 8 types are reachable (Anyone and Men's; the women's roster has no Snipers today); every result is in the requested gender's divisions.
+- [ ] Pool = top 5 per division by prominence, plus all `is_champion` fighters, plus every curated name, plus the per-type top-up to 8.
+- [ ] *Verifiable:* `npm test` checks, over all 4,096 answer combinations: no fighter gets more than 5% of combinations; at least 100 different fighters are reachable; all 8 types are reachable.
 
-### US-002: Name and division
-- [ ] Optional name field on the start screen (max 20 characters, letters, spaces, `'`, `-`, `.`); Enter starts the quiz; remembered in the browser.
-- [ ] Division choice: Anyone / Men's / Women's.
-- [ ] *Verifiable:* a name with `<script>` or emoji is reduced to its allowed characters in the URL, the page and the preview title.
+### US-002: One tap to start, labels that fit
+- [ ] The start screen has no inputs: title, one "Find my fighter" button, the counter.
+- [ ] A fighter's label matches how they win: no Submission Artist with more knockouts than submissions or with no submission wins; no Knockout Artist or Sniper with more submission wins than knockouts; no grappler type for a fighter with under 1 takedown and under 0.5 submission attempts per 15 minutes.
+- [ ] Known strikers (Ngannou, Liddell, Bisping, Conor, Pereira, Gaethje, Holloway, O'Malley, Adesanya…) are strikers; known grapplers (Khabib, Islam, GSP, Khamzat, Merab, Demetrious Johnson, Ronda, Oliveira, Kayla Harrison…) are grapplers; Khabib, Khamzat and Merab are pressure fighters.
+- [ ] Every icon and champion is the result for at least 8 answer sets; Conor, Khabib, Pereira, Topuria and Jon Jones for at least 20 each.
+- [ ] Wrestling answers every time give a known grappler; knockout answers every time give a known striker.
+- [ ] *Verifiable:* `npm test` (test/matching.test.mjs).
 
 ### US-003: Shareable result URL
-- [ ] Finishing the quiz moves the address bar to `/r/<slug>?n=<name>&a=<answers>&d=<division>` without a reload.
+- [ ] Finishing the quiz moves the address bar to `/r/<slug>?a=<answers>` without a reload.
 - [ ] Opening that URL in a new browser shows the same result: fighter, type, match %, why-you-match bullets, runners-up.
 - [ ] Opening it without `a` (or with a bad one) still shows the fighter, their type and stats, with a "Find your fighter" button.
 - [ ] An unknown slug shows the start screen with a short note.
-- [ ] Old links (`/?result=<slug>&from=<name>`) redirect to the new format when the fighter is in the pool.
+- [ ] Old links (`/?result=<slug>&from=<name>`) redirect to the new format when the fighter is in the pool; the name is dropped. `n=` and `d=` on a `/r/` link are ignored.
 - [ ] Share buttons: native share sheet on phones, Copy link, Post on X, Save image.
 
 ### US-004: Social preview image
 - [ ] The build renders a 1200×630 PNG per pool fighter to `/og/<slug>.png` (fighter, nickname, type, division, record, 4 key stats, site address).
-- [ ] A Pages Function on `/r/*` only serves `index.html` with `og:title`, `og:description`, `og:image`, `og:url` and Twitter tags filled in: "Aris fights like Justin Gaethje" (or "I fight like…" without a name).
+- [ ] A Pages Function on `/r/*` only serves `index.html` with `og:title`, `og:description`, `og:image`, `og:url` and Twitter tags filled in: "I fight like Justin Gaethje 🥊", with the page title "I fight like Justin Gaethje | Which UFC Fighter Are You?".
 - [ ] The function never renders images, never writes storage and never calls the UFC API.
-- [ ] *Verifiable:* `wrangler pages dev dist` + `curl /r/<slug>?n=Aris` shows the filled meta tags; the PNG URL returns `image/png`.
+- [ ] *Verifiable:* `wrangler pages dev dist` + `curl /r/<slug>?a=021301` shows the filled meta tags; the PNG URL returns `image/png`.
 
 ### US-005: Friend challenge
-- [ ] When someone opens a share link and then takes the quiz, their result shows "You vs Aris": both fighters, both types, and the three axes side by side.
+- [ ] When someone opens a share link and then takes the quiz, their result shows "You vs Friend": both fighters and one line on the biggest difference in style. Before they start, the start screen says "Your friend got <fighter>. Your turn." above the title.
 
 ### US-006: Weekly roster refresh
 - [ ] `.github/workflows/weekly-refresh.yml` runs Tuesdays 12:00 UTC and on demand, calls the deploy hook from secret `CF_PAGES_DEPLOY_HOOK`, and skips cleanly when the secret is missing.
@@ -79,7 +82,7 @@ As a quiz taker, I want a fighter who is fighting now, so the result means somet
 ### US-008: Legends and fame (added 2026-11-13)
 - [ ] Curated icons and stars are in the pool whether or not they still fight, with their career stats.
 - [ ] No uncurated, non-champion fighter in the pool has a losing UFC record.
-- [ ] *Verifiable:* `npm test`: Jon Jones, Khabib, GSP, Ronda Rousey and Amanda Nunes are in; at least 80% of answer sets (50% in women's divisions) land on a champion, icon or star; no fighter above 8% (12% women's); at least 100 fighters reachable (35 women's).
+- [ ] *Verifiable:* `npm test`: Jon Jones, Khabib, GSP, Ronda Rousey and Amanda Nunes are in; at least 90% of answer sets land on a champion, icon or star; no fighter above 5%; at least 100 fighters reachable.
 
 ### US-009: Quiz counter (added 2026-11-13)
 - [ ] A finished quiz is counted once, only after a valid Turnstile token, only for a known fighter and type.
@@ -96,25 +99,26 @@ As a quiz taker, I want a fighter who is fighting now, so the result means somet
 
 - **FR-1** `scripts/build-roster.mjs` writes `src/data/roster.json` with `snapshot`, `typeShare` and `fighters`. Each fighter carries identity (slug, name, nickname, division, champion flag), record and UFC win methods, the six API stats the app shows, its axes, type, prominence and last fight date.
 - **FR-2** Fighter axes, each in −1…1, using percentiles across the active set (not just the pool):
-  - **R** (striker +, grappler −) = (0.65·pct(slpm) + 0.35·pct(str_acc)) − (0.6·pct(td_avg) + 0.4·pct(sub_avg))
-  - **T** (pressure +, counter −) = 0.6·(2·pct(slpm+sapm) − 1) + 0.4·(1 − 2·pct(str_def))
+  - **R** (striker +, grappler −) = (0.65·pct(slpm) + 0.35·pct(str_acc)) − (0.6·pct(td_avg) + 0.4·pct(sub_avg)) + 2.2·(KO wins − SUB wins) ÷ UFC wins. The last term is how the fighter actually wins, so a low-volume knockout puncher is still a striker.
+  - **T** (pressure +, counter −) = 0.5·(2·pct(slpm+sapm) − 1) + 0.3·(1 − 2·pct(str_def)) + 1.2·max(0, 2·pct(td_avg) − 1). Takedown rates above the median count as pressure; a striker who never shoots loses nothing for it.
   - **F** (finisher +, decision −) = 2·pct(finish rate of UFC wins) − 1
   - **W** (knockout +, submission −) = (KO wins − SUB wins) ÷ finishes, 0 when no finishes
   - R, T, F are re-centred on the active-set median so the eight types split fairly.
-- **FR-3** Type = the signs of R, T, F. Names: SPF The Knockout Artist · SPD The Volume Machine · SCF The Sniper · SCD The Technician · GPF The Mauler · GPD The Grinder · GCF The Submission Artist · GCD The Chess Master.
-- **FR-4** Six style questions, four options each; each option moves R, T, F (and W). The person's axes are the sums divided by the largest possible sum per axis.
-- **FR-5** Score per pool fighter = 1 − d/dmax + 0.12 if same type + 0.10 × prominence (0…1), where d is weighted distance (R 1.0, T 0.8, F 0.7, W 0.4 × how much the person wants a finish). Fighters within 0.035 of the top score count as tied, and a hash of the answers picks among them: still deterministic, but edge-of-the-map fighters no longer win every extreme answer set. Match % = round(100 × (1 − d/dmax)). The displayed type is the matched fighter's type, so the page, the preview and the fighter always agree.
-- **FR-6** Result page: type name and one-line description, fighter (nickname, name, record, division, champion badge), match %, up to three "why you match" reasons, each pairing one of the person's answers with the fighter stat that backs it (a reason is dropped when the stat does not clearly agree; under 1% of results end up with none and hide the section), the person's three axis bars against the fighter's, two runners-up (no percentage, since a near-tie runner-up can score a point or two higher on raw style), roster rarity of the type, share buttons, retake.
-- **FR-7** `functions/r/[slug].js` (Cloudflare Pages Function) rewrites meta tags with `HTMLRewriter`; it imports the roster JSON, sanitises `n`, and keeps Pages' default HTML caching (revalidate every time), so a deploy never leaves a cached page pointing at old asset files.
+- **FR-3** Type = the signs of R, T, F, with one exception: a grappler who finishes (R < 0, F ≥ 0) takes the middle letter from W, so W < 0 gives GCF and W > 0 gives GPF (W exactly 0 falls back to T). The same rule types a person from their answers. Names: SPF The Knockout Artist · SPD The Volume Machine · SCF The Sniper · SCD The Technician · GPF The Mauler · GPD The Grinder · GCF The Submission Artist · GCD The Chess Master.
+- **FR-4** Six style questions, four options each; each option moves R, T, F (and W). The person's axes are the sums divided by the largest possible sum per axis, stretched by 1.4 and capped at ±1, so answers use the same range as fighters.
+- **FR-5** Score per pool fighter = 1 − d/dmax + 0.20 if same type + 0.25 × prominence (0…1), where d is weighted distance (R 1.0, T 0.8, F 0.7, W 0.4 × how much the person wants a finish). Fighters within 0.09 of the top score count as tied, and a hash of the answers picks among them: still deterministic, but edge-of-the-map fighters no longer win every extreme answer set. Match % = round(100 × (1 − d/dmax)). The displayed type is the matched fighter's type, so the page, the preview and the fighter always agree.
+- **FR-6** Result page: "You fight like" (or "Your friend fights like" on a shared link), the fighter (nickname, name, division, record, Champion / Legend / Last fought badge), type name, match %, the type's one-line description, four stats, the "You vs Friend" box after a challenge, two runners-up (no percentage, since a near-tie runner-up can score a point or two higher on raw style), how many people got this fighter, share buttons, retake.
+- **FR-7** `functions/r/[slug].js` (Cloudflare Pages Function) rewrites meta tags with `HTMLRewriter`; it imports the roster JSON, validates `a` for `og:url`, ignores every other parameter, and keeps Pages' default HTML caching (revalidate every time), so a deploy never leaves a cached page pointing at old asset files.
 - **FR-8** `scripts/render-og.mjs` uses Satori + resvg with the bundled Bebas Neue and Oswald fonts (SIL Open Font License) after `vite build`, writing to `dist/og/`.
 - **FR-10** `functions/api/tally.js` + `src/lib/tally-core.js`: GET returns `total` and `typed` (and `fighter`, `type` for a known slug and type), cached 60 s under a canonical key, and only when both the database and the Turnstile secret exist. POST `{slug, type, token}` verifies the token with Turnstile siteverify (5 s timeout), bumps `day:<date>` only while under the cap, then bumps `total`, `typed`, `fighter:<slug>`, `type:<code>` in one D1 batch. Type shares divide by `typed`, which leaves out the 62 seeded quizzes. Schema: `migrations/0001_tally.sql`. The browser loads Turnstile only when the quiz starts and only when `VITE_TURNSTILE_SITE_KEY` is set at build time; a retake with the same answers reads instead of counting again.
-- **FR-9** GA4 events: `quiz_start`, `quiz_complete` (type, fighter), `share` (method), `shared_view` (fighter).
+- **FR-9** GA4 events: `quiz_start`, `quiz_complete` (type, fighter), `share` (method, fighter), `shared_view` (fighter).
 
 ## 5. Non-Goals (Out of Scope)
 
 - No fighter photos (licensing).
 - No accounts, no saving results on a server.
-- No on-request image rendering, so the name is not drawn into the preview image.
+- No on-request image rendering.
+- No name field and no men/women filter.
 - No change to the UFC Stats API or the jobs that refresh it.
 - No Cloudflare, GitHub-settings or GA changes in this PR; those are listed under Open Questions for your yes.
 
@@ -123,7 +127,7 @@ As a quiz taker, I want a fighter who is fighting now, so the result means somet
 - Keep the current look: near-black, gold `#d4af37`, fight-night red, Bebas Neue for display and Oswald for text. Move from 1,700 lines of inline styles to components plus one stylesheet.
 - Mobile first: the result fits a phone screen with the share buttons reachable by thumb.
 - Respect `prefers-reduced-motion`; all choices are real buttons with focus rings.
-- "Save image" draws a 1080×1350 card in the browser (Canvas, no library) with the person's name on it, so the name *can* appear on an image without any server cost. On phones it opens the share sheet with the image attached when the browser allows it.
+- "Save image" draws a 1080×1350 card in the browser (Canvas, no library) headed "I fight like", with no server cost. On phones it opens the share sheet with the image attached when the browser allows it.
 
 ## 7. Technical Considerations
 
@@ -135,12 +139,12 @@ As a quiz taker, I want a fighter who is fighting now, so the result means somet
 
 **Cost guardrails.**
 - Per visit: static files plus one cached counter read (`GET /api/tally`, edge-cached 60 s, one indexed D1 lookup per minute per location). The `/r/*` function runs once per share-link view (people and link-preview bots) with no storage and no outbound calls. Pages routes only `/r/*` and `/api/*` to functions, so all other files stay free.
-- No image rendering on request; ~200 PNGs are drawn once per build.
+- No image rendering on request; ~140 PNGs are drawn once per build.
 - Build makes 10 API calls with a fixed retry limit (3 per page) and no loop that can feed itself.
 - The weekly refresh fires one deploy per week; a deploy cannot trigger another.
 - The one write path (`POST /api/tally`) needs a single-use Turnstile token, accepts only known fighter and type keys, writes five rows per quiz, and stops at 15,000 counts a day (at most 75,000 D1 row writes, under the free plan's 100,000). It is off until the database and secret exist.
 
-**Risks.** Every start-screen view and every share-link view runs a Pages Function (`/api/tally`, plus `/r/*` for share links), even when the counter read is cached. On the Workers Free plan that is 100,000 function calls a day; past it, functions error for the rest of the day while static pages keep working, so the counter disappears and share previews fall back to the generic card. Name text in previews is whatever the sharer typed, limited to letters and 20 characters; there is no profanity filter.
+**Risks.** Every start-screen view and every share-link view runs a Pages Function (`/api/tally`, plus `/r/*` for share links), even when the counter read is cached. On the Workers Free plan that is 100,000 function calls a day; past it, functions error for the rest of the day while static pages keep working, so the counter disappears and share previews fall back to the generic card.
 
 ## 8. Success Metrics
 
@@ -156,9 +160,8 @@ As a quiz taker, I want a fighter who is fighting now, so the result means somet
 
 ## 10. Recommendations to make it the best version of this app (my pick first)
 
-1. **Ship the share loop first (this PR).** Name in the preview title, a page per result, "You vs Aris". Quizzes like this live or die on how good the link looks in a group chat.
+1. **Ship the share loop first (this PR).** A page per result, a preview image per fighter, "You vs Friend". Quizzes like this live or die on how good the link looks in a group chat.
 2. **Switch on the counter (built in this PR; Open Question 2).** Social proof on the start screen and "you're one of 41 people who got Gaethje" on the result.
 3. **Fight-week moments.** Before each UFC event, a banner "Fighting this Saturday: your match vs X", using the events endpoint at build time. Gives people a reason to come back weekly.
 4. **Division-size question** ("How big are you?") to match by weight as well as style, for people who care about realism.
-5. **Name in the image (bounded).** If the title-only name isn't enough, render named images on request with a hard cap: cache each (fighter, name) image in R2 forever, refuse past N new renders a day, fall back to the plain fighter image.
-6. **More questions, adaptive.** Ask a 7th question only when the top two matches are within 2%.
+5. **More questions, adaptive.** Ask a 7th question only when the top two matches are within 2%.
