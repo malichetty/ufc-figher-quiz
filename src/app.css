@@ -154,19 +154,12 @@ button {
   font-weight: 400;
   font-size: clamp(3.2rem, 13vw, 6rem);
   line-height: 0.9;
-  margin-bottom: 20px;
+  margin-bottom: 36px;
 }
 .title span {
   display: block;
   color: var(--gold);
   text-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
-}
-.lede {
-  color: var(--muted);
-  font-size: 1.05rem;
-  line-height: 1.6;
-  margin: 0 auto 32px;
-  max-width: 460px;
 }
 .notice,
 .challenge-banner {
@@ -432,11 +425,6 @@ button {
   max-width: 440px;
   margin: 0 auto;
 }
-.rarity {
-  color: var(--muted);
-  font-size: 13px;
-  margin-top: 10px;
-}
 .stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -478,6 +466,20 @@ button {
   border-top: 1px solid var(--line);
   padding-top: 18px;
   margin-top: 18px;
+}
+.why summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-family: var(--body);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 13px;
+}
+.why summary:hover {
+  color: var(--gold);
+}
+.why[open] summary {
+  margin-bottom: 12px;
 }
 .why ul {
   list-style: none;
@@ -619,16 +621,6 @@ button {
   position: sticky;
   top: 24px;
 }
-.cta-text {
-  font-size: 1.25rem;
-  line-height: 1.4;
-  text-align: center;
-  margin-bottom: 6px;
-}
-.share-url {
-  word-break: break-all;
-  font-size: 12px;
-}
 
 .sr-only {
   position: absolute;
@@ -648,10 +640,6 @@ button {
   margin: 18px 0 4px;
   flex-direction: column;
   gap: 8px;
-}
-.inline-cta .cta-text {
-  font-size: 1.1rem;
-  margin: 0;
 }
 .sticky-cta {
   position: fixed;

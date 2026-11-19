@@ -151,10 +151,6 @@ export function buildRoster(rows, rules = ROSTER_RULES, stars = STARS) {
       (a.row.is_champion ? 150 : 0) + Math.min(a.u.fiveRound, 6) * 15 + a.u.wins * 3 + winRate * 20;
   }
 
-  const typeShare = Object.fromEntries(TYPE_CODES.map((c) => [c, 0]));
-  for (const a of active) typeShare[a.type] += 1;
-  for (const c of TYPE_CODES) typeShare[c] = round3(typeShare[c] / Math.max(active.length, 1));
-
   // Nobody wants to be told they fight like someone with a losing record, so
   // uncurated fighters need more UFC wins than losses.
   const winning = active.filter((a) => a.row.is_champion || a.u.wins > a.u.losses);
@@ -234,7 +230,6 @@ export function buildRoster(rows, rules = ROSTER_RULES, stars = STARS) {
   return {
     snapshot,
     activeCount: active.length,
-    typeShare,
     fighters,
     missingStars,
   };

@@ -1,16 +1,6 @@
 {
  "snapshot": "2026-11-07",
  "activeCount": 520,
- "typeShare": {
-  "SPF": 0.238,
-  "SPD": 0.113,
-  "SCF": 0.06,
-  "SCD": 0.088,
-  "GPF": 0.102,
-  "GPD": 0.046,
-  "GCF": 0.196,
-  "GCD": 0.156
- },
  "fighters": [
   {
    "slug": "alex-pereira",

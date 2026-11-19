@@ -34,7 +34,6 @@ const track = (event, params) => {
 
 const lastName = (name) => name.replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/i, '').split(' ').slice(-1)[0];
 const possessive = (word) => (word === 'Their' ? word : `${word}'s`);
-const typePlural = (code) => TYPES[code].name.replace(/^The /, '') + 's';
 
 // Everything the result screen shows, rebuilt from a share URL or a finished quiz.
 function buildResult({ slug, name, answers, division }) {
@@ -224,19 +223,10 @@ export default function App() {
         )}
       </main>
       <footer className="site-footer">
-        Fighter data from the <a href={API_DOCS}>UFC Stats API</a>, active roster as of {formatDate(roster.snapshot)}.
-        Not affiliated with the UFC.
+        Powered by <a href={API_DOCS}>UFC Stats API</a> · Not affiliated with the UFC
       </footer>
     </div>
   );
-}
-
-function formatDate(iso) {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
 }
 
 function Intro({ name, setName, division, setDivision, onStart, notice, challenger, tally }) {
@@ -248,14 +238,10 @@ function Intro({ name, setName, division, setDivision, onStart, notice, challeng
           {challenger.name || 'Your friend'} got <strong>{challenger.fighter.name}</strong>. Your turn.
         </p>
       )}
-      <p className="eyebrow">Six questions. No sign-up.</p>
+      <p className="eyebrow">Six questions</p>
       <h1 className="title">
         Which UFC fighter <span>are you?</span>
       </h1>
-      <p className="lede">
-        Are you McGregor, Khabib or someone nobody saw coming? Six questions match your style against{' '}
-        {roster.fighters.length} UFC fighters, from today's champions to the legends, using their real fight stats.
-      </p>
       <form
         className="start-form"
         onSubmit={(e) => {
@@ -264,22 +250,22 @@ function Intro({ name, setName, division, setDivision, onStart, notice, challeng
         }}
       >
         <label className="field">
-          <span>Your name (optional)</span>
+          <span className="sr-only">Your name (optional)</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={NAME_MAX * 3}
-            placeholder="So friends know it's you"
+            placeholder="Your name (optional)"
             autoComplete="given-name"
             enterKeyHint="go"
           />
         </label>
         <fieldset className="segmented">
-          <legend>Match me with</legend>
+          <legend className="sr-only">Match me with</legend>
           {[
             ['all', 'Anyone'],
-            ['men', "Men's divisions"],
-            ['women', "Women's divisions"],
+            ['men', 'Men'],
+            ['women', 'Women'],
           ].map(([value, label]) => (
             <label key={value} className={division === value ? 'on' : ''}>
               <input
@@ -299,7 +285,7 @@ function Intro({ name, setName, division, setDivision, onStart, notice, challeng
       </form>
       {tally?.total > 0 && (
         <p className="social-proof">
-          <strong>{tally.total.toLocaleString()}</strong> people have found their fighter
+          <strong>{tally.total.toLocaleString()}</strong> fighters found
         </p>
       )}
     </section>
@@ -321,8 +307,7 @@ function Quiz({ index, name, onAnswer, onBack }) {
         ))}
       </div>
       <p className="eyebrow">
-        Question {index + 1} of {QUESTIONS.length}
-        {name && index === 0 ? `. Let's go, ${name}.` : ''}
+        {index + 1} / {QUESTIONS.length}
       </p>
       <h2 className="question" ref={heading} tabIndex={-1} aria-label={`Question ${index + 1} of ${QUESTIONS.length}: ${q.question}`}>
         {q.question}
@@ -411,7 +396,6 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
     [own, fighter.slug, name, answers, division],
   );
   const reasons = answers ? whyYouMatch(fighter, answers, own ? 'You' : name || 'They') : [];
-  const rarity = Math.round((roster.typeShare[type] || 0) * 100);
   const status = statusOf(fighter);
   const counted = tally?.total > 0 && tally.fighter > 0;
   const surname = lastName(fighter.name);
@@ -461,11 +445,9 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
           </div>
         ) : (
           <div className="inline-cta phone-only" ref={ctaRef}>
-            <p className="cta-text">Think you fight like {surname} too? Or are you a different beast?</p>
             <button className="btn btn-primary btn-big" onClick={onChallenge}>
               Find my fighter
             </button>
-            <p className="small">Six questions, about a minute.</p>
           </div>
         )}
 
@@ -490,31 +472,22 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
           </div>
         )}
 
-        <p className="type-desc">{own ? t.description : t.about}</p>
-        <p className="rarity">
-          Only {rarity}% of active UFC fighters are {typePlural(type)}.
-        </p>
+        <p className="type-desc">{t.tagline}</p>
         {counted && (
           <p className="social-proof small-proof">
             {own && tally.fighter === 1 ? (
-              <>You're the first person to get {surname}.</>
-            ) : own ? (
-              <>
-                You're one of <strong>{tally.fighter.toLocaleString()}</strong> people who got {surname}.
-              </>
+              <>First to get {surname}</>
             ) : (
               <>
-                <strong>{tally.fighter.toLocaleString()}</strong> {tally.fighter === 1 ? 'person has' : 'people have'}{' '}
-                gotten {surname}.
+                <strong>{tally.fighter.toLocaleString()}</strong> got {surname}
               </>
-            )}{' '}
-            {tally.typed > 0 && <>{Math.min(100, Math.round((tally.type / tally.typed) * 100))}% of quiz takers are {typePlural(type)}.</>}
+            )}
           </p>
         )}
 
         {reasons.length > 0 && (
-          <div className="why">
-            <h3>Why {surname}</h3>
+          <details className="why">
+            <summary>Why {surname}?</summary>
             <ul>
               {reasons.map((r) => (
                 <li key={r.answer}>
@@ -522,7 +495,7 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
                 </li>
               ))}
             </ul>
-          </div>
+          </details>
         )}
 
         <div className="stats">
@@ -550,11 +523,7 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
               <div className="runner" key={r.fighter.slug}>
                 <div>
                   <strong>{r.fighter.name}</strong>
-                  <span>
-                    {[TYPES[r.fighter.type].name, r.fighter.division, statusOf(r.fighter)?.label]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </span>
+                  <span>{TYPES[r.fighter.type].name}</span>
                 </div>
               </div>
             ))}
@@ -567,11 +536,9 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
           <ShareActions result={result} url={share} />
         ) : (
           <>
-            <p className="cta-text">Think you fight like {surname} too?</p>
             <button className="btn btn-primary btn-big" onClick={onChallenge}>
               Find my fighter
             </button>
-            <p className="small">Six questions, about a minute.</p>
           </>
         )}
         {own && (
@@ -708,7 +675,6 @@ function ShareActions({ result, url }) {
       <button className="btn btn-outline" onClick={save} disabled={saving}>
         {saving ? 'Drawing…' : 'Save image'}
       </button>
-      <p className="small share-url">{url.replace('https://', '')}</p>
     </>
   );
 }
