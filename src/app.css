@@ -336,8 +336,8 @@ button {
 }
 .card-kicker {
   color: var(--gold);
-  font-size: 13px;
-  letter-spacing: 5px;
+  font-size: 14px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
   margin-bottom: 8px;
 }
@@ -454,40 +454,11 @@ button {
   color: var(--muted);
   margin-bottom: 12px;
 }
-.why,
 .versus {
   text-align: left;
   border-top: 1px solid var(--line);
-}
-.versus {
   padding-top: 14px;
   margin-bottom: 14px;
-}
-.why summary {
-  cursor: pointer;
-  color: var(--muted);
-  font-family: var(--body);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  font-size: 13px;
-}
-.why summary:hover {
-  color: var(--gold);
-}
-.why[open] summary {
-  margin-bottom: 12px;
-}
-.why ul {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.why li {
-  border-left: 3px solid var(--gold);
-  padding-left: 12px;
-  line-height: 1.45;
-  color: #e5e5e5;
 }
 .versus-row {
   display: grid;
@@ -559,10 +530,6 @@ button {
   color: var(--gold);
   font-weight: 500;
 }
-.why {
-  margin-top: 12px;
-  padding-top: 12px;
-}
 .share-row {
   display: grid;
   grid-auto-flow: column;
@@ -573,12 +540,6 @@ button {
   padding: 10px 6px;
   font-size: 13px;
   letter-spacing: 1px;
-}
-.why-answer {
-  display: block;
-  color: var(--gold);
-  font-size: 0.9rem;
-  margin-bottom: 2px;
 }
 
 .bot-check {
@@ -618,8 +579,7 @@ button {
 
 @media (max-width: 720px) {
   .content {
-    align-items: flex-start;
-    padding-top: 16px;
+    padding: 20px 16px;
   }
   .result {
     gap: 14px;

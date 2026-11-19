@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import roster from './data/roster.json';
 import { QUESTIONS } from './lib/questions.js';
 import { AXES, TYPES } from './lib/types.js';
-import { findMatch, rank, scoreFighter, userAxes, whyYouMatch } from './lib/match.js';
+import { findMatch, rank, scoreFighter, userAxes } from './lib/match.js';
 import { NAME_MAX, parseShareLocation, sanitizeName, sharePath, shareUrl } from './lib/share.js';
 import { saveResultImage } from './lib/card-image.js';
 import { fetchTally, prepareBotCheck, recordTally } from './lib/tally.js';
@@ -342,7 +342,6 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
     () => (own ? shareUrl({ slug: fighter.slug, name, answers, division }) : null),
     [own, fighter.slug, name, answers, division],
   );
-  const reasons = answers ? whyYouMatch(fighter, answers, own ? 'You' : name || 'They') : [];
   const status = statusOf(fighter);
   const counted = tally?.total > 0 && tally.fighter > 0;
   const surname = lastName(fighter.name);
@@ -419,18 +418,6 @@ function Result({ result, own, challenger, tally, onRetake, onChallenge }) {
           )}
         </div>
 
-        {reasons.length > 0 && (
-          <details className="why">
-            <summary>Why {surname}?</summary>
-            <ul>
-              {reasons.map((r) => (
-                <li key={r.answer}>
-                  <span className="why-answer">{r.answer}</span> {r.evidence}
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
       </article>
 
       <aside className="actions">
