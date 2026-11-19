@@ -170,9 +170,10 @@ test('US-003 share URLs round-trip, and old links still parse', () => {
 
 test('US-010 fighter quotes are short, attributed, bleeped and belong to pool fighters', () => {
   const slugs = new Set(roster.fighters.map((f) => f.slug));
-  const swears = ['fuck', 'shit'];
+  const swears = ['fuck', 'shit', 'bitch', 'asshole', 'cunt', 'dick', 'piss'];
   for (const [slug, { line, by }] of Object.entries(QUOTES)) {
     assert.ok(slugs.has(slug), `${slug} is not in the roster`);
+    assert.ok(typeof line === 'string' && line.trim(), `${slug}: empty line`);
     assert.ok(line.split(/\s+/).length <= 12, `${slug}: more than 12 words`);
     assert.ok(line.length <= 80, `${slug}: more than 80 characters`);
     assert.ok(typeof by === 'string' && by.trim(), `${slug}: no attribution`);

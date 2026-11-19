@@ -21,8 +21,6 @@
   --s4: calc(16 * var(--u));
   --s5: calc(24 * var(--u));
   --s6: calc(32 * var(--u));
-  --s7: calc(48 * var(--u));
-  --s8: calc(64 * var(--u));
   --gutter: 20px;
 }
 
@@ -305,6 +303,11 @@ button {
   text-transform: uppercase;
   text-wrap: balance;
   margin-bottom: var(--s3);
+}
+/* The You vs Friend box makes this the tallest card, so the name gives up
+   some size to keep the share links on the first screen. */
+.card:has(.versus) .fighter-name {
+  font-size: max(28px, min(18cqi, 16svh - 52px, 100cqi / (var(--letters, 10) * 0.43)));
 }
 .fighter-meta {
   color: var(--muted);
