@@ -497,28 +497,12 @@ button {
   }
 }
 
+/* Phones: the result is sized so the share buttons stay on the first screen
+   with the browser toolbars showing. */
 @media (max-width: 720px) {
   .content {
     padding: 20px 16px;
   }
-  .result {
-    gap: 14px;
-  }
-  .card {
-    padding: 0 16px 20px;
-  }
-  .card-bar {
-    margin: 0 -16px 20px;
-  }
-  .actions {
-    flex-basis: 100%;
-    position: static;
-  }
-}
-
-/* Phones with their browser toolbars showing: keep the share buttons on the
-   first screen. */
-@media (max-width: 720px) and (max-height: 760px) {
   .content:has(> .result) {
     padding-top: 12px;
   }
@@ -526,10 +510,14 @@ button {
     gap: 10px;
   }
   .card {
-    padding-bottom: 14px;
+    padding: 0 16px 14px;
   }
   .card-bar {
-    margin-bottom: 12px;
+    margin: 0 -16px 12px;
+  }
+  .actions {
+    flex-basis: 100%;
+    position: static;
   }
   .card-kicker {
     margin-bottom: 2px;
@@ -582,7 +570,7 @@ button {
   }
 }
 
-@media (max-width: 720px) and (max-height: 640px) {
+@media (max-width: 720px) and (max-height: 660px) {
   .content:has(> .result) {
     padding-top: 8px;
   }

@@ -125,7 +125,7 @@ As a quiz taker, I want a fighter who is fighting now, so the result means somet
 ## 6. Design Considerations
 
 - Keep the current look: near-black, gold `#d4af37`, fight-night red, Bebas Neue for display and Oswald for text. Move from 1,700 lines of inline styles to components plus one stylesheet.
-- Mobile first: on a phone with its browser toolbars showing, the main button (Share my result, or Find my fighter on a friend's link) is on the first screen without scrolling. Measured at 390 × 664, 375 × 667, 360 × 640 and 320 × 568. The Copy link / Post on X / Save image row of your own result is on the first screen too, at every size from 360 × 601 up; at 320 × 568 it can sit a few pixels below. Short screens get tighter spacing and smaller type; nothing is hidden.
+- Mobile first: phones (up to 720 px wide) get one compact result layout at every height, and a tighter one at 660 px tall or less, so the main button (Share my result, or Find my fighter on a friend's link) is on the first screen with the browser toolbars showing. The Copy link / Post on X / Save image row of your own result is on the first screen too. Measured for every fighter a person can get, on a You vs Friend result with the counter line showing, at 140 sizes from 320 × 568 to 720 × 900; the one exception is 320 × 568, where the row can sit a few pixels below. Nothing is hidden on short screens; spacing and type get smaller.
 - Respect `prefers-reduced-motion`; all choices are real buttons with focus rings.
 - "Save image" draws a 1080×1350 card in the browser (Canvas, no library) headed "I fight like", with no server cost. On phones it opens the share sheet with the image attached when the browser allows it.
 
