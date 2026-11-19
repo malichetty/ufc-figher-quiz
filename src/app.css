@@ -529,3 +529,121 @@ button {
     position: static;
   }
 }
+
+/* Phones with their browser toolbars showing: keep the share buttons on the
+   first screen. */
+@media (max-width: 720px) and (max-height: 760px) {
+  .content:has(> .result) {
+    padding-top: 12px;
+  }
+  .result {
+    gap: 10px;
+  }
+  .card {
+    padding-bottom: 14px;
+  }
+  .card-bar {
+    margin-bottom: 12px;
+  }
+  .card-kicker {
+    margin-bottom: 2px;
+  }
+  .nickname {
+    font-size: 1.25rem;
+  }
+  .fighter-name {
+    font-size: clamp(2rem, 10vw, 2.6rem);
+    margin: 0 0 6px;
+  }
+  .type-row {
+    gap: 4px 10px;
+    margin: 10px 0 6px;
+  }
+  .type-badge,
+  .match-pct {
+    font-size: 1.25rem;
+  }
+  .type-desc,
+  .vs-verdict {
+    line-height: 1.35;
+  }
+  .stats {
+    margin: 10px 0 8px;
+  }
+  .stat {
+    padding: 6px 2px;
+    gap: 0;
+  }
+  .stat strong {
+    font-size: 1.25rem;
+  }
+  .versus {
+    padding-top: 8px;
+    margin-bottom: 8px;
+  }
+  .versus-row {
+    margin-bottom: 4px;
+  }
+  .versus-row strong {
+    font-size: 1.2rem;
+  }
+  .vs {
+    font-size: 1.5rem;
+  }
+  .vs-verdict {
+    margin: 2px 0 6px;
+  }
+  .actions .btn-big {
+    font-size: 24px;
+    padding: 14px 20px;
+  }
+}
+
+@media (max-width: 720px) and (max-height: 600px) {
+  .content:has(> .result) {
+    padding-top: 8px;
+  }
+  .card-bar {
+    margin-bottom: 8px;
+  }
+  .fighter-meta {
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  .status {
+    margin-left: 6px;
+    font-size: 11px;
+  }
+  .type-badge,
+  .match-pct {
+    font-size: 1.1rem;
+  }
+  .type-row {
+    margin: 8px 0 4px;
+  }
+  .type-desc {
+    font-size: 0.95rem;
+  }
+  .stats {
+    margin: 8px 0 6px;
+  }
+  .also {
+    font-size: 13px;
+  }
+  .stat {
+    padding: 4px 2px;
+  }
+  .stat strong {
+    font-size: 1.1rem;
+  }
+  .versus-row strong {
+    font-size: 1.05rem;
+  }
+  .vs-verdict {
+    font-size: 15px;
+  }
+  .actions .btn-big {
+    font-size: 22px;
+    padding: 12px 18px;
+  }
+}
