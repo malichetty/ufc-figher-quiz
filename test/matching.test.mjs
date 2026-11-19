@@ -15,34 +15,22 @@ for (let i = 0; i < 4 ** QUESTIONS.length; i++) {
   allAnswers.push(QUESTIONS.map((_, k) => (i >> (2 * k)) & 3));
 }
 
-// Women's divisions have fewer names people know, so their bars are looser.
-const SPREAD = {
-  all: { cap: 0.08, distinct: 100, famous: 0.8 },
-  men: { cap: 0.08, distinct: 100, famous: 0.8 },
-  women: { cap: 0.12, distinct: 35, famous: 0.5 },
-};
-
-for (const division of ['all', 'men', 'women']) {
-  test(`US-001 result spread and fame, division=${division}`, () => {
-    const counts = new Map();
-    const types = new Set();
-    let famous = 0;
-    for (const a of allAnswers) {
-      const r = findMatch(roster, a, division);
-      counts.set(r.fighter.slug, (counts.get(r.fighter.slug) || 0) + 1);
-      types.add(r.type);
-      if (r.fighter.champion || r.fighter.tier) famous += 1;
-      if (division === 'men') assert.equal(r.fighter.women, false, r.fighter.name);
-      if (division === 'women') assert.equal(r.fighter.women, true, r.fighter.name);
-    }
-    const bar = SPREAD[division];
-    const [topSlug, topCount] = [...counts].sort((x, y) => y[1] - x[1])[0];
-    assert.ok(topCount / allAnswers.length <= bar.cap, `${topSlug} gets ${topCount} of ${allAnswers.length}`);
-    assert.ok(counts.size >= bar.distinct, `only ${counts.size} fighters reachable`);
-    assert.ok(famous / allAnswers.length >= bar.famous, `only ${famous} famous results`);
-    if (division !== 'women') assert.equal(types.size, TYPE_CODES.length);
-  });
-}
+test('US-001 result spread and fame', () => {
+  const counts = new Map();
+  const types = new Set();
+  let famous = 0;
+  for (const a of allAnswers) {
+    const r = findMatch(roster, a);
+    counts.set(r.fighter.slug, (counts.get(r.fighter.slug) || 0) + 1);
+    types.add(r.type);
+    if (r.fighter.champion || r.fighter.tier) famous += 1;
+  }
+  const [topSlug, topCount] = [...counts].sort((x, y) => y[1] - x[1])[0];
+  assert.ok(topCount / allAnswers.length <= 0.05, `${topSlug} gets ${topCount} of ${allAnswers.length}`);
+  assert.ok(counts.size >= 100, `only ${counts.size} fighters reachable`);
+  assert.ok(famous / allAnswers.length >= 0.9, `only ${famous} famous results`);
+  assert.equal(types.size, TYPE_CODES.length);
+});
 
 test('US-008 legends are in, and nobody uncurated has a losing UFC record', () => {
   for (const slug of ['jon-jones', 'khabib-nurmagomedov', 'georges-st-pierre', 'ronda-rousey', 'amanda-nunes']) {

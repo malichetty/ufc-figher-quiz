@@ -7,14 +7,16 @@ import { STARS } from '../data/stars.js';
 export const ROSTER_RULES = {
   activeDays: 548, // ~18 months before the newest fight in the data
   minUfcFights: 4,
-  perDivision: 12,
-  // Thin types (e.g. counter-striking finishers) get topped up from the active
-  // list so a few fighters don't collect every answer set of that type.
-  typeFloor: { men: 10, women: 5 },
+  perDivision: 5,
+  // A thin type gets topped up from the active list so a few fighters don't
+  // collect every answer set of that type.
+  typeFloor: 8,
   // Prominence floor for curated names, so matching leans toward them.
   starProminence: { icon: 1, star: 0.75 },
   minStarUfcFights: 3,
 };
+
+const AXIS_MIX = { winMethod: 2.2, pace: 0.5, exposed: 0.3, takedowns: 1.2 };
 
 const MEN_BY_WEIGHT = [
   [125, 'Flyweight'], [135, 'Bantamweight'], [145, 'Featherweight'], [155, 'Lightweight'],
@@ -120,8 +122,16 @@ export function buildRoster(rows, rules = ROSTER_RULES, stars = STARS) {
     const grappling = 0.6 * pct.td(r.td_avg) + 0.4 * pct.sub(r.sub_avg);
     const finishes = a.u.ko + a.u.sub;
     a.raw = {
-      R: striking - grappling,
-      T: 0.6 * (2 * pct.pace(r.slpm + r.sapm) - 1) + 0.4 * (1 - 2 * pct.def(r.str_def)),
+      // How they win counts as well as what they throw: a low-volume
+      // knockout puncher is still a striker.
+      R: striking - grappling + AXIS_MIX.winMethod * ((a.u.ko - a.u.sub) / Math.max(a.u.wins, 1)),
+      // Chaining takedowns is pressure, or smothering wrestlers read as
+      // counter fighters. Only above-median takedown rates add: a striker who
+      // never shoots is not a counter fighter for it.
+      T:
+        AXIS_MIX.pace * (2 * pct.pace(r.slpm + r.sapm) - 1) +
+        AXIS_MIX.exposed * (1 - 2 * pct.def(r.str_def)) +
+        AXIS_MIX.takedowns * Math.max(0, 2 * pct.td(r.td_avg) - 1),
       F: 2 * pct.fin(finishRate(a)) - 1,
       W: finishes ? (a.u.ko - a.u.sub) / finishes : 0,
     };
@@ -169,16 +179,12 @@ export function buildRoster(rows, rules = ROSTER_RULES, stars = STARS) {
     (x, y) => y.prominenceRaw - x.prominenceRaw || x.row.name.localeCompare(y.row.name),
   );
   for (const code of TYPE_CODES) {
-    for (const women of [false, true]) {
-      const floor = women ? rules.typeFloor.women : rules.typeFloor.men;
-      const isGroup = (a) => a.type === code && a.division.startsWith("Women's") === women;
-      let have = [...picked].filter(isGroup).length;
-      for (const a of byProminence) {
-        if (have >= floor) break;
-        if (isGroup(a) && !picked.has(a)) {
-          picked.add(a);
-          have += 1;
-        }
+    let have = [...picked].filter((a) => a.type === code).length;
+    for (const a of byProminence) {
+      if (have >= rules.typeFloor) break;
+      if (a.type === code && !picked.has(a)) {
+        picked.add(a);
+        have += 1;
       }
     }
   }
@@ -204,7 +210,6 @@ export function buildRoster(rows, rules = ROSTER_RULES, stars = STARS) {
       name: r.name,
       nickname: r.nickname || null,
       division: a.division,
-      women: a.division.startsWith("Women's"),
       champion: !!r.is_champion,
       tier: a.tier,
       legend: a.u.lastFight < cutoff && !r.is_champion,

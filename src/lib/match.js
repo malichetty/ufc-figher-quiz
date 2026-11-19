@@ -3,12 +3,12 @@ import { QUESTIONS } from './questions.js';
 import { typeFromAxes } from './types.js';
 
 const WEIGHTS = { R: 1, T: 0.8, F: 0.7, W: 0.4 };
-const SAME_TYPE_BONUS = 0.12;
-const PROMINENCE_WEIGHT = 0.1;
-const TIE_WINDOW = 0.035;
+const SAME_TYPE_BONUS = 0.2;
+const PROMINENCE_WEIGHT = 0.25;
+const TIE_WINDOW = 0.09;
 // Answer sums rarely reach the theoretical max, so stretch them to use the
 // same range as fighters' axes.
-const ANSWER_STRETCH = 1.1;
+const ANSWER_STRETCH = 1.4;
 
 const AXIS_MAX = (() => {
   const max = { R: 0, T: 0, F: 0, W: 0 };
@@ -51,12 +51,6 @@ function hash(str) {
   return h >>> 0;
 }
 
-export function inDivision(fighter, division) {
-  if (division === 'men') return !fighter.women;
-  if (division === 'women') return fighter.women;
-  return true;
-}
-
 export function scoreFighter(u, uType, fighter) {
   const similarity = 1 - distance(u, fighter.axes) / D_MAX;
   const score =
@@ -66,11 +60,10 @@ export function scoreFighter(u, uType, fighter) {
   return { fighter, score, matchPct: Math.round(similarity * 100) };
 }
 
-export function rank(roster, answers, division = 'all') {
+export function rank(roster, answers) {
   const u = userAxes(answers);
   const uType = typeFromAxes(u);
   const ranked = roster.fighters
-    .filter((f) => inDivision(f, division))
     .map((f) => scoreFighter(u, uType, f))
     .sort(
       (a, b) =>
@@ -83,15 +76,15 @@ export function rank(roster, answers, division = 'all') {
 
 // The displayed type is the matched fighter's type, so the result page, the
 // share preview and the fighter always agree. The same-type bonus makes it
-// equal the answer type whenever such a fighter exists in the chosen divisions.
-export function findMatch(roster, answers, division = 'all') {
-  const { axes, ranked } = rank(roster, answers, division);
+// equal the answer type whenever such a fighter exists.
+export function findMatch(roster, answers) {
+  const { axes, ranked } = rank(roster, answers);
   if (!ranked.length) return null;
   // Fighters at the edge of the style space would otherwise collect every
   // extreme answer set. Among near-ties, pick by a hash of the answers: still
   // deterministic, and it spreads results across equally good matches.
   const near = ranked.filter((r) => r.score >= ranked[0].score - TIE_WINDOW);
-  const best = near[hash(`${answers.join('')}${division}`) % near.length];
+  const best = near[hash(answers.join('')) % near.length];
   const rest = ranked.filter((r) => r !== best);
   return {
     axes,

@@ -1,5 +1,6 @@
 // A type code is three letters: S/G (striker or grappler), P/C (pressure or
 // counter), F/D (finisher or decision). See tasks/prd-relaunch.md FR-2, FR-3.
+// The live counter stores these eight codes, so they never change.
 export const TYPES = {
   SPF: {
     name: 'The Knockout Artist',
@@ -43,6 +44,12 @@ export const AXES = [
   { key: 'F', plus: 'Finisher', minus: 'Decision' },
 ];
 
-export function typeFromAxes({ R, T, F }) {
-  return (R >= 0 ? 'S' : 'G') + (T >= 0 ? 'P' : 'C') + (F >= 0 ? 'F' : 'D');
+// A grappler who finishes is named by how they finish (W: knockout + or
+// submission −), not by pace: ground-and-pound is The Mauler, chokes are The
+// Submission Artist. With no lean either way, pace decides as for everyone else.
+export function typeFromAxes({ R, T, F, W }) {
+  const striker = R >= 0;
+  const finisher = F >= 0;
+  const pressure = !striker && finisher && W !== 0 ? W > 0 : T >= 0;
+  return (striker ? 'S' : 'G') + (pressure ? 'P' : 'C') + (finisher ? 'F' : 'D');
 }
