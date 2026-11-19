@@ -74,7 +74,7 @@ As a quiz taker, I want a fighter who is fighting now, so the result means somet
 - [ ] *Verifiable:* `wrangler pages dev dist` + `curl /r/<slug>?a=021301` shows the filled meta tags; the PNG URL returns `image/png`.
 
 ### US-005: Friend challenge
-- [ ] When someone opens a share link and then takes the quiz, their result shows "You vs Friend": both fighters and one line on the biggest difference in style, compared on R, T, F and W (FR-2): "Biggest difference: you're more of a grappler than your friend." The roles are striker or grappler, pressure fighter or counter fighter, finisher or points fighter, knockout hunter or submission hunter. When the two are under 0.35 apart on every axis, it reads "You and your friend fight almost the same way. That's a five-round war." Before they start, the start screen says "Your friend got <fighter>. Your turn." above the title.
+- [ ] When someone opens a share link that carries the friend's answers and then takes the quiz, their result shows "You vs Friend": both fighters and one line on the biggest difference in style, compared on R, T, F and W (FR-2): "Biggest difference: you're more of a grappler than your friend." The roles are striker or grappler, pressure fighter or counter fighter, finisher or points fighter, knockout hunter or submission hunter. When the two are under 0.35 apart on every axis, it reads "You and your friend fight almost the same way. That's a five-round war." Before they start, the start screen says "Your friend got <fighter>. Your turn." above the title.
 
 ### US-006: Weekly roster refresh
 - [ ] `.github/workflows/weekly-refresh.yml` runs Tuesdays 12:00 UTC and on demand, calls the deploy hook from secret `CF_PAGES_DEPLOY_HOOK`, and skips cleanly when the secret is missing.
@@ -97,7 +97,7 @@ As a quiz taker, I want a fighter who is fighting now, so the result means somet
 
 ## 4. Functional Requirements
 
-- **FR-1** `scripts/build-roster.mjs` writes `src/data/roster.json` with `snapshot`, `activeCount`, `source` and `fighters`. Each fighter carries identity (slug, name, nickname, division, champion flag), record and UFC win methods, the six API stats the app shows, its axes, type, prominence and last fight date.
+- **FR-1** `scripts/build-roster.mjs` writes `src/data/roster.json` with `snapshot`, `activeCount`, `source` and `fighters`. Each fighter carries identity (slug, name, nickname, division, champion flag), record and UFC win methods, six API stats (the result shows three of them, the rest feed the scoring), its axes, type, prominence and last fight date.
 - **FR-2** Fighter axes, each in −1…1, using percentiles across the active set (not just the pool):
   - **R** (striker +, grappler −) = (0.65·pct(slpm) + 0.35·pct(str_acc)) − (0.6·pct(td_avg) + 0.4·pct(sub_avg)) + 2.2·(KO wins − SUB wins) ÷ UFC wins. The last term is how the fighter actually wins, so a low-volume knockout puncher is still a striker.
   - **T** (pressure +, counter −) = 0.5·(2·pct(slpm+sapm) − 1) + 0.3·(1 − 2·pct(str_def)) + 1.2·max(0, 2·pct(td_avg) − 1). Takedown rates above the median count as pressure; a striker who never shoots loses nothing for it.
@@ -125,7 +125,7 @@ As a quiz taker, I want a fighter who is fighting now, so the result means somet
 ## 6. Design Considerations
 
 - Keep the current look: near-black, gold `#d4af37`, fight-night red, Bebas Neue for display and Oswald for text. Move from 1,700 lines of inline styles to components plus one stylesheet.
-- Mobile first: on a phone with its browser toolbars showing (about 660 px tall, and down to 320 × 568), the main share button is on the first screen without scrolling, and on 360 px wide and up the Copy link / Post on X / Save image row is too. Short screens get tighter spacing and smaller type; nothing is hidden.
+- Mobile first: on a phone with its browser toolbars showing, the main button (Share my result, or Find my fighter on a friend's link) is on the first screen without scrolling. Measured at 390 × 664, 375 × 667, 360 × 640 and 320 × 568. At 390 × 664 and 375 × 667 the Copy link / Post on X / Save image row is on the first screen too; on shorter screens it can need a short scroll. Short screens get tighter spacing and smaller type; nothing is hidden.
 - Respect `prefers-reduced-motion`; all choices are real buttons with focus rings.
 - "Save image" draws a 1080×1350 card in the browser (Canvas, no library) headed "I fight like", with no server cost. On phones it opens the share sheet with the image attached when the browser allows it.
 
