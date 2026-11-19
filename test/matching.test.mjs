@@ -96,6 +96,60 @@ test('US-002 names are reduced to allowed characters', () => {
   assert.equal(sanitizeName(`${'x'.repeat(19)}𝐀b`), `${'x'.repeat(19)}𝐀`);
 });
 
+const byName = new Map(roster.fighters.map((f) => [f.name, f]));
+const known = (f) => !!(f.tier || f.champion);
+
+test('type labels agree with how the fighter wins (seen: Ngannou, Liddell, Bisping as Submission Artists)', () => {
+  const wrong = [];
+  for (const f of roster.fighters) {
+    if (f.type === 'GCF' && (f.koWins > f.subWins || f.subWins === 0)) wrong.push(`${f.name} GCF ${f.koWins} KO ${f.subWins} SUB`);
+    if ((f.type === 'SPF' || f.type === 'SCF') && f.subWins > f.koWins) wrong.push(`${f.name} ${f.type} ${f.koWins} KO ${f.subWins} SUB`);
+    if (f.type[0] === 'G' && f.tdAvg < 1 && f.subAvg < 0.5) wrong.push(`${f.name} ${f.type} td ${f.tdAvg} sub ${f.subAvg}`);
+  }
+  assert.deepEqual(wrong, []);
+});
+
+test('famous fighters sit on the side of the map they are known for', () => {
+  const striker = ['Francis Ngannou', 'Chuck Liddell', 'Michael Bisping', 'Derrick Lewis', 'Conor McGregor',
+    'Alex Pereira', 'Justin Gaethje', 'Vitor Belfort', 'Wanderlei Silva', 'Cody Garbrandt', 'Max Holloway',
+    "Sean O'Malley", 'Israel Adesanya'];
+  const grappler = ['Khabib Nurmagomedov', 'Islam Makhachev', 'Georges St-Pierre', 'Khamzat Chimaev',
+    'Merab Dvalishvili', 'Demetrious Johnson', 'Matt Hughes', 'Randy Couture', 'Ronda Rousey', 'Demian Maia',
+    'Charles Oliveira', 'Kayla Harrison'];
+  const pressure = ['Khabib Nurmagomedov', 'Khamzat Chimaev', 'Merab Dvalishvili'];
+  const wrong = [];
+  const get = (n) => byName.get(n) || assert.fail(`${n} missing from the pool`);
+  for (const n of striker) if (get(n).type[0] !== 'S') wrong.push(`${n} ${get(n).type} should be a striker`);
+  for (const n of grappler) if (get(n).type[0] !== 'G') wrong.push(`${n} ${get(n).type} should be a grappler`);
+  for (const n of pressure) if (!(get(n).axes.T > 0)) wrong.push(`${n} T ${get(n).axes.T} should be pressure`);
+  assert.deepEqual(wrong, []);
+});
+
+test('every icon and champion is reachable, the biggest names often (seen: GSP never, Khabib 0.4%)', () => {
+  const counts = new Map();
+  for (const a of allAnswers) {
+    const slug = findMatch(roster, a).fighter.slug;
+    counts.set(slug, (counts.get(slug) || 0) + 1);
+  }
+  const short = [];
+  for (const f of roster.fighters) {
+    const n = counts.get(f.slug) || 0;
+    if ((f.tier === 'icon' || f.champion) && n < 8) short.push(`${f.name} ${n}`);
+  }
+  for (const name of ['Conor McGregor', 'Khabib Nurmagomedov', 'Alex Pereira', 'Ilia Topuria', 'Jon Jones']) {
+    const n = counts.get(byName.get(name)?.slug) || 0;
+    if (n < 20) short.push(`${name} ${n} (wants 20)`);
+  }
+  assert.deepEqual(short, []);
+});
+
+test('a pure wrestler gets a known grappler, a pure knockout striker a known striker', () => {
+  const wrestler = findMatch(roster, [1, 3, 1, 0, 2, 2]).fighter;
+  assert.ok(known(wrestler) && wrestler.type[0] === 'G', `${wrestler.name} ${wrestler.type}`);
+  const striker = findMatch(roster, [0, 0, 0, 1, 0, 0]).fighter;
+  assert.ok(known(striker) && striker.type[0] === 'S', `${striker.name} ${striker.type}`);
+});
+
 test('US-003 share URLs round-trip, and old links still parse', () => {
   const path = sharePath({ slug: 'justin-gaethje', name: 'Aris', answers: [0, 1, 2, 3, 0, 1], division: 'men' });
   assert.equal(path, '/r/justin-gaethje?n=Aris&a=012301&d=men');
