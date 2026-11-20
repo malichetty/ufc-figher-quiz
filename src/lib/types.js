@@ -4,35 +4,35 @@
 export const TYPES = {
   SPF: {
     name: 'The Knockout Artist',
-    tagline: 'Ends arguments in one sentence.',
+    tagline: 'Walks forward, throws heat, ends it early.',
   },
   SPD: {
     name: 'The Volume Machine',
-    tagline: 'Never one reply when nine will do.',
+    tagline: 'Out-works everyone, every round.',
   },
   SCF: {
     name: 'The Sniper',
-    tagline: 'Quiet all night, then one line that ends it.',
+    tagline: 'Patient, precise, one clean shot.',
   },
   SCD: {
     name: 'The Technician',
-    tagline: 'Never been hit, never been wrong, happy to explain why.',
+    tagline: 'Wins every minute without taking damage.',
   },
   GPF: {
     name: 'The Mauler',
-    tagline: "Doesn't knock. Comes through the wall.",
+    tagline: 'Takes you down and beats you up.',
   },
   GPD: {
     name: 'The Grinder',
-    tagline: 'Wins by being annoying for longer.',
+    tagline: 'Relentless wrestling, unbreakable cardio.',
   },
   GCF: {
     name: 'The Submission Artist',
-    tagline: 'Lets people talk until they trap themselves.',
+    tagline: 'Every scramble is a trap.',
   },
   GCD: {
     name: 'The Chess Master',
-    tagline: 'Planned how this ends before it started.',
+    tagline: 'Control, position, no mistakes.',
   },
 };
 
