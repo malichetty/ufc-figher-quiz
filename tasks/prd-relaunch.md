@@ -114,8 +114,8 @@ As a quiz taker, I want to see something my fighter actually said, so the result
 As a quiz taker, I want to hear my fighter say their line, so the result is even funnier to share.
 
 - [ ] When the fighter's line has a clip, the short name reads "— Khabib · ▶ Hear it". The button is gold like the name, at least 40 px tall to tap, and adds at most 12 px to the card. It shows on your own result and on a friend's link, never on a "You vs Friend" result (that card has no line).
-- [ ] Tapping it opens a box in the middle of the screen over a dark backdrop: YouTube's own player, 16:9, as wide as the screen allows up to 560 px, starting at the moment and stopping at its end, and a "Close" button. The player is always on screen and never hidden.
-- [ ] Nothing loads from YouTube before the tap. Close, Esc or a tap on the backdrop removes the player, so the sound stops, and puts the focus back on the button. Nothing plays on its own.
+- [ ] Tapping it opens a box in the middle of the screen over a dark backdrop: YouTube's own player, as wide as the screen allows up to 560 px and never smaller than 200 px either way (16:9 where that fits; sized to the height on a phone held sideways), starting at the moment and stopping at its end, and a "Close" button. The player is always on screen and never hidden.
+- [ ] Nothing loads from YouTube before the tap. Close, Esc or a tap on the backdrop removes the player, so the sound stops, and puts the focus back on the button. (Once someone has clicked inside the player, Esc goes to YouTube, so Close or the backdrop is the way out.) Nothing plays on its own.
 - [ ] Screen readers hear the button as "Hear Khabib say it", and the box has a name.
 - [ ] Every clip belongs to a line, its video id is 11 letters, digits, `-` or `_`, its start and end are whole seconds, the end is after the start and at most 10 seconds later, and Dustin Poirier has none.
 - [ ] *Verifiable:* `npm test` (test/matching.test.mjs); each clip's channel is noted next to it in `src/data/quotes.js`.

@@ -307,7 +307,7 @@ function Result({ result, own, challenger, onRetake, onChallenge }) {
             <blockquote>“{quote.line}”</blockquote>
             <figcaption>
               — {quote.by}
-              {quote.clip && <HearIt fighter={fighter} quote={quote} />}
+              {quote.clip && <HearIt key={fighter.slug} fighter={fighter} quote={quote} />}
             </figcaption>
           </figure>
         )}
