@@ -1,31 +1,14 @@
-# UFC API Proxy Worker
+# ufc-quiz-proxy Worker (legacy)
 
-This Cloudflare Worker proxies requests to the UFC API and adds your API key securely.
+This Worker served the fighter list to the old quiz (using the UFC Stats API admin key) and kept quiz stats in KV.
 
-## Deploy in 3 steps:
+Since the relaunch, the app no longer calls it: the roster is baked in at build time from the public API (`scripts/build-roster.mjs`). This file matches what is deployed, including the lock-down that only allows `GET /api/fighters` and always fetches one fixed upstream URL.
 
-### 1. Install Wrangler (if not installed)
-```bash
-npm install -g wrangler
-```
+Planned: retire the Worker, its route, its secret and its KV namespace once the relaunch has been live for a week (see `tasks/prd-relaunch.md`, Open Questions).
 
-### 2. Login to Cloudflare
-```bash
-wrangler login
-```
+Deploy (only with the owner's go-ahead):
 
-### 3. Deploy and add your API key
 ```bash
 cd worker
-wrangler deploy
-wrangler secret put UFC_API_KEY
-# Paste your API key when prompted
+npx wrangler deploy
 ```
-
-## Your worker URL will be:
-```
-https://ufc-api-proxy.<your-account>.workers.dev
-```
-
-## Update the quiz app:
-Change `API_BASE` in `ufc-fighter-quiz.jsx` to your worker URL.

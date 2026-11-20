@@ -29,6 +29,7 @@ Thumbs.db
 
 # Wrangler local state (contains cached data)
 worker/.wrangler/
+.wrangler/
 
 # Local development
 .cache/
