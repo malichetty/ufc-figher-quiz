@@ -1,4 +1,4 @@
-// PRD acceptance criteria US-001, US-003, US-008, US-010, US-011 (tasks/prd-relaunch.md).
+// PRD acceptance criteria US-001, US-003, US-008, US-010, US-011, US-012 (tasks/prd-relaunch.md).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -180,6 +180,17 @@ test('US-010 fighter quotes are short, attributed, bleeped and belong to pool fi
     assert.ok(typeof by === 'string' && by.trim(), `${slug}: no attribution`);
     for (const w of swears) assert.ok(!line.toLowerCase().includes(w), `${slug}: undashed swear word`);
   }
+});
+
+test('US-012 every clip belongs to a quote, is a YouTube id and a moment of at most 10 seconds, and Dustin Poirier has none', () => {
+  for (const [slug, { clip }] of Object.entries(QUOTES)) {
+    if (clip === undefined) continue;
+    const { id, start, end } = clip;
+    assert.match(id, /^[A-Za-z0-9_-]{11}$/, `${slug}: bad video id`);
+    assert.ok(Number.isInteger(start) && start >= 0 && Number.isInteger(end), `${slug}: seconds must be whole numbers`);
+    assert.ok(end > start && end - start <= 10, `${slug}: ${start} to ${end}`);
+  }
+  assert.equal(QUOTES['dustin-poirier'].clip, undefined);
 });
 
 test('US-011 the fame ladder: higher levels come up more, and every goat and favourite often', () => {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import roster from './data/roster.json';
 import { QUOTES } from './data/quotes.js';
 import { QUESTIONS } from './lib/questions.js';
@@ -304,7 +305,10 @@ function Result({ result, own, challenger, onRetake, onChallenge }) {
         {quote && !versus && (
           <figure className="quote">
             <blockquote>“{quote.line}”</blockquote>
-            <figcaption>— {quote.by}</figcaption>
+            <figcaption>
+              — {quote.by}
+              {quote.clip && <HearIt fighter={fighter} quote={quote} />}
+            </figcaption>
           </figure>
         )}
 
@@ -406,6 +410,65 @@ function ShareActions({ result, url }) {
           {saving ? 'Drawing…' : 'Save image'}
         </button>
       </div>
+    </>
+  );
+}
+
+// The player is YouTube's own, made only after the tap so nothing loads from
+// YouTube before it; closing removes it, which stops the sound.
+function HearIt({ fighter, quote }) {
+  const [open, setOpen] = useState(false);
+  const button = useRef(null);
+  const dialog = useRef(null);
+  const close = useRef(null);
+  const { id, start, end } = quote.clip;
+
+  useEffect(() => {
+    if (!open) return;
+    const d = dialog.current;
+    const onClose = () => {
+      setOpen(false);
+      button.current?.focus();
+    };
+    d.addEventListener('close', onClose);
+    d.showModal();
+    close.current?.focus();
+    return () => d.removeEventListener('close', onClose);
+  }, [open]);
+
+  const show = () => {
+    setOpen(true);
+    track('hear_it', { fighter: fighter.slug });
+  };
+  const title = `${fighter.name}: ${quote.line}`;
+
+  return (
+    <>
+      <span className="hear-sep" aria-hidden="true">·</span>
+      <button ref={button} className="hear-btn" onClick={show} aria-label={`Hear ${quote.by} say it`}>
+        {'▶\uFE0E'} Hear it
+      </button>
+      {open &&
+        createPortal(
+          <dialog
+            ref={dialog}
+            className="hear-dialog"
+            aria-label={title}
+            onClick={(e) => e.target === e.currentTarget && e.currentTarget.close()}
+          >
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${id}?start=${start}&end=${end}&autoplay=1&playsinline=1&rel=0`}
+              title={title}
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+            <button ref={close} className="link-btn" onClick={() => dialog.current.close()}>
+              Close
+            </button>
+          </dialog>,
+          document.body,
+        )}
     </>
   );
 }
