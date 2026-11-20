@@ -2,13 +2,13 @@
 import { QUESTIONS } from './questions.js';
 import { typeFromAxes } from './types.js';
 
-const WEIGHTS = { R: 1, T: 0.8, F: 0.7, W: 0.4 };
+const WEIGHTS = { R: 0.8, T: 0.4, F: 1.1, W: 0.2 };
 const SAME_TYPE_BONUS = 0.2;
-const PROMINENCE_WEIGHT = 0.25;
-const TIE_WINDOW = 0.09;
+const PROMINENCE_WEIGHT = 0.15;
+const TIE_WINDOW = 0.14;
 // Answer sums rarely reach the theoretical max, so stretch them to use the
 // same range as fighters' axes.
-const ANSWER_STRETCH = 1.4;
+const ANSWER_STRETCH = 1.6;
 
 const AXIS_MAX = (() => {
   const max = { R: 0, T: 0, F: 0, W: 0 };
@@ -81,10 +81,12 @@ export function findMatch(roster, answers) {
   const { axes, ranked } = rank(roster, answers);
   if (!ranked.length) return null;
   // Fighters at the edge of the style space would otherwise collect every
-  // extreme answer set. Among near-ties, pick by a hash of the answers: still
-  // deterministic, and it spreads results across equally good matches.
+  // extreme answer set. Among near-ties, a hash of the answers picks one,
+  // weighted by fame: still deterministic, and bigger names come up more.
   const near = ranked.filter((r) => r.score >= ranked[0].score - TIE_WINDOW);
-  const best = near[hash(answers.join('')) % near.length];
+  const total = near.reduce((sum, r) => sum + r.fighter.prominence, 0);
+  let left = (hash(answers.join('')) / 2 ** 32) * total;
+  const best = near.find((r) => (left -= r.fighter.prominence) < 0) || near[near.length - 1];
   const rest = ranked.filter((r) => r !== best);
   return {
     axes,

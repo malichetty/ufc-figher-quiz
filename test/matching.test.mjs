@@ -1,4 +1,4 @@
-// PRD acceptance criteria US-001, US-003, US-008, US-010 (tasks/prd-relaunch.md).
+// PRD acceptance criteria US-001, US-003, US-008, US-010, US-011 (tasks/prd-relaunch.md).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -9,6 +9,7 @@ import { parseShareLocation, sharePath } from '../src/lib/share.js';
 import { buildRoster } from '../src/lib/roster.js';
 import { verdict } from '../src/lib/versus.js';
 import { QUOTES } from '../src/data/quotes.js';
+import { FAME_LADDER } from '../src/data/stars.js';
 
 const roster = JSON.parse(readFileSync(new URL('../src/data/roster.json', import.meta.url), 'utf8'));
 
@@ -38,7 +39,7 @@ test('US-008 legends are in, and nobody uncurated has a losing UFC record', () =
   for (const slug of ['jon-jones', 'khabib-nurmagomedov', 'georges-st-pierre', 'ronda-rousey', 'amanda-nunes']) {
     const f = roster.fighters.find((x) => x.slug === slug);
     assert.ok(f, `${slug} missing`);
-    assert.equal(f.tier, 'icon');
+    assert.equal(f.tier, 'goat');
   }
   for (const f of roster.fighters) {
     if (!f.tier && !f.champion) assert.ok(f.ufcWins > f.ufcLosses, `${f.name} ${f.ufcWins}-${f.ufcLosses}`);
@@ -106,7 +107,7 @@ test('famous fighters sit on the side of the map they are known for', () => {
   assert.deepEqual(wrong, []);
 });
 
-test('every icon and champion is reachable, the biggest names often (seen: GSP never, Khabib 0.4%)', () => {
+test('every hand-picked name above star level and every champion is reachable, the biggest names often (seen: GSP never, Khabib 0.4%)', () => {
   const counts = new Map();
   for (const a of allAnswers) {
     const slug = findMatch(roster, a).fighter.slug;
@@ -115,7 +116,7 @@ test('every icon and champion is reachable, the biggest names often (seen: GSP n
   const short = [];
   for (const f of roster.fighters) {
     const n = counts.get(f.slug) || 0;
-    if ((f.tier === 'icon' || f.champion) && n < 8) short.push(`${f.name} ${n}`);
+    if ((f.tier !== 'star' || f.champion) && n < 8) short.push(`${f.name} ${n}`);
   }
   for (const name of ['Conor McGregor', 'Khabib Nurmagomedov', 'Alex Pereira', 'Ilia Topuria', 'Jon Jones']) {
     const n = counts.get(byName.get(name)?.slug) || 0;
@@ -178,5 +179,44 @@ test('US-010 fighter quotes are short, attributed, bleeped and belong to pool fi
     assert.ok(line.length <= 80, `${slug}: more than 80 characters`);
     assert.ok(typeof by === 'string' && by.trim(), `${slug}: no attribution`);
     for (const w of swears) assert.ok(!line.toLowerCase().includes(w), `${slug}: undashed swear word`);
+  }
+});
+
+test('US-011 the fame ladder: higher levels come up more, and every goat and favourite often', () => {
+  const counts = new Map();
+  for (const a of allAnswers) {
+    const slug = findMatch(roster, a).fighter.slug;
+    counts.set(slug, (counts.get(slug) || 0) + 1);
+  }
+  const share = (f) => (counts.get(f.slug) || 0) / allAnswers.length;
+  const avg = {};
+  for (const { level } of FAME_LADDER) {
+    const fs = roster.fighters.filter((f) => f.tier === level);
+    avg[level] = fs.reduce((sum, f) => sum + share(f), 0) / fs.length;
+  }
+  assert.ok(avg.goat >= 0.02, `goat average ${avg.goat}`);
+  assert.ok(avg.favourite >= 0.012, `favourite average ${avg.favourite}`);
+  assert.ok(avg.goat > avg.favourite && avg.favourite > avg.great && avg.great > avg.star, JSON.stringify(avg));
+  assert.ok(avg.favourite >= 2 * avg.star, JSON.stringify(avg));
+  const short = [];
+  for (const f of roster.fighters) {
+    const n = counts.get(f.slug) || 0;
+    if (f.tier === 'goat' && n < 50) short.push(`${f.name} ${n} (wants 50)`);
+    if (f.tier === 'favourite' && n < 29) short.push(`${f.name} ${n} (wants 29)`);
+  }
+  assert.deepEqual(short, []);
+});
+
+test('US-011 the pool is champions and hand-picked names only (seen: Belal Muhammad in, Carlos Prates and Josh Hokit out)', () => {
+  const levelOf = new Map(FAME_LADDER.flatMap(({ level, names }) => names.map((n) => [n, level])));
+  for (const f of roster.fighters) {
+    assert.ok(f.champion || levelOf.has(f.name), `${f.name} is neither a champion nor hand-picked`);
+    if (levelOf.has(f.name)) assert.equal(f.tier, levelOf.get(f.name), `${f.name} level`);
+    else assert.equal(f.tier, FAME_LADDER[FAME_LADDER.length - 1].level, `${f.name}: a belt alone is not top fame`);
+  }
+  assert.ok(!byName.has('Belal Muhammad'), 'Belal Muhammad is in the pool');
+  for (const name of ['Carlos Prates', 'Josh Hokit']) assert.ok(byName.has(name), `${name} missing from the pool`);
+  for (const { level, names } of FAME_LADDER.slice(0, -1)) {
+    for (const name of names) assert.ok(byName.has(name), `${name} (${level}) missing from the pool`);
   }
 });
