@@ -1,6 +1,6 @@
 // One real line per fighter, shown on the result card under the type's description.
 // Rules: lines the fighter said in public, each backed by two published sources;
-// swear words dashed out; no slurs, and nothing about injuries, family tragedies, religion, nationality or race.
+// swear words dashed out; a slur is never printed, not even in part; nothing about injuries, family tragedies, religion, nationality or race.
 export const QUOTES = {
   // his catchphrase, Portuguese slang he says means 'Let's go'; e.g. Instagram '2+1=3 CHAMA'. https://uk.sports.yahoo.com/news/does-chama-mean-ufc-footage-153822735.html https://www.cbssports.com/mma/news/ufc-320-alex-pereira-gets-his-chance-at-redemption-after-rare-humbling-loss-against-magomed-ankalaev/
   'alex-pereira': { line: "Chama!", by: "Poatan" },
@@ -42,8 +42,8 @@ export const QUOTES = {
   'michael-chandler': { line: "See you at the top!", by: "Chandler" },
   // repeated to herself during her walkout introductions and in the octagon after knocking out Zhang Weili, UFC 261, April 2021. https://cbssports.com/mma/news/ufc-261-results-highlights-rose-namajunas-stuns-weili-zhang-with-first-round-knockout-to-regain-title https://espn.com.au/mma/story/_/id/31328674/ufc-261-takeaways-kamaru-usman-p4p-king-valentina-shevchenko-enters-goat-convo
   'rose-namajunas': { line: "I am the best!", by: "Thug Rose" },
-  // his long-running motto before big fights, posted on Twitter and Instagram (2019-2020) and recalled at UFC 269 media day, December 2021. https://mmajunkie.usatoday.com/2021/12/ufc-269-dustin-poirier-title-fight-25-minutes-eternity-charles-oliveira https://independent.co.uk/sport/ufc/dustin-poirier-charles-oliveira-ufc-269-b1972929.html
-  'dustin-poirier': { line: "25 minutes to make life fair.", by: "Dustin" },
+  // The owner's pick. His viral line from airport bodycam video, June 2026; he said it earlier of Michael Chandler too ("if we touch your chin, it's gonna be bad", June 2022). The last word of the viral version is a racial slur: it is never printed, in any spelling, only replaced by [bleep]. https://sports.yahoo.com/articles/dustin-poirier-threatens-cop-during-204612942.html https://www.independent.co.uk/sport/ufc/dustin-poirier-michael-chandler-conor-mcgregor-b2092742.html https://www.givemesport.com/88016144-conor-mcgregors-next-fight-dustin-poirier-issues-warning-to-michael-chandler/
+  'dustin-poirier': { line: "It's gonna be bad, my [bleep].", by: "Dustin" },
   // octagon interview after knocking out Curtis Blaydes in 60 seconds, UFC 304, Manchester, July 2024. https://www.espn.com/mma/story/_/id/40659829/aspinall-defends-interim-title-kos-blaydes-ufc-304 https://cbssports.com/mma/news/ufc-304-results-highlights-tom-aspinall-crushes-curtis-blaydes-to-retain-title-calls-out-jon-jones-to-unify
   'tom-aspinall': { line: "I'm the best finisher in the UFC.", by: "Aspinall" },
   // his title-defence celebration (Bruce Buffer's 'and still' announcement), e.g. his tweet after beating Jorge Masvidal, UFC 261, April 2021. https://espn.com.au/mma/story/_/id/31328674/ufc-261-takeaways-kamaru-usman-p4p-king-valentina-shevchenko-enters-goat-convo https://si.com/mma/2022/08/18/kamaru-usman-leon-edwards-winninng-streak-record-welterweight-title-ufc-278
