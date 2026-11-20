@@ -76,7 +76,8 @@ export function rank(roster, answers) {
 
 // The displayed type is the matched fighter's type, so the result page, the
 // share preview and the fighter always agree. The same-type bonus makes it
-// equal the answer type whenever such a fighter exists.
+// equal the answer type for most answer sets, not all: a near-tie can go to
+// a more famous fighter of a neighbouring type.
 export function findMatch(roster, answers) {
   const { axes, ranked } = rank(roster, answers);
   if (!ranked.length) return null;

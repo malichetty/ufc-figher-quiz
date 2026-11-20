@@ -30,7 +30,7 @@ Your answers ──► style axes ──► nearest known fighter ──► /r/<
 ```
 
 1. `scripts/build-roster.mjs` pulls every fighter from the public API, keeps the champions and the hand-picked fame ladder in `src/data/stars.js` (GOATs, favourites, proven champions, stars), and scores each on three axes from their stats and how they win.
-2. Your six answers land on the same axes. The closest fighter wins; same answers, same fighter.
+2. Your six answers land on the same axes. Fighters about equally close to you are tied, and fame decides between them; same answers, same fighter.
 3. `scripts/render-og.mjs` draws a preview image per fighter once, at build time.
 4. `functions/r/[slug].js` (a Cloudflare Pages Function) fills in the link-preview tags for share links. It renders nothing and stores nothing.
 5. `functions/api/tally.js` counts finished quizzes in Cloudflare D1 after a Turnstile check (schema in `migrations/`). It stays off until the `DB` binding, the `TURNSTILE_SECRET` secret and the `VITE_TURNSTILE_SITE_KEY` build variable exist.
